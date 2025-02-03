@@ -1,42 +1,9 @@
-# gudshow
-
-A new Flutter project.
-
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import 'dart:developer';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:gudshow/core/painters/spirite_painter.dart';
 import 'package:gudshow/trim/widgets/handle_wdiget.dart';
-import 'package:gudshow/core/painters/master_clipper.dart';
+
 
 class Trimmer extends StatefulWidget {
   final ui.Image spriteSheetImage;
@@ -142,7 +109,7 @@ class _TrimmerState extends State<Trimmer> {
               Positioned(
                 left: dragHandleWidth + leftStartHandleOffsetX,
                 height: 60,
-                width: resizabletotalCanvasWitdh - leftStartHandleOffsetX,
+                width: resizabletotalCanvasWitdh,
                 child: Container(
                   transform: Matrix4.translationValues(0, 0, 0),
                   child: Row(
@@ -150,47 +117,48 @@ class _TrimmerState extends State<Trimmer> {
                     children: [
                       Expanded(
                         child: IgnorePointer(
-                            ignoring: false,
+                          ignoring: false,
+                          child: Container(
+                            clipBehavior: widget.isHighlighted
+                                ? Clip.hardEdge
+                                : Clip.none,
+                            decoration: widget.isHighlighted
+                                ? BoxDecoration(
+                                    border: Border.all(
+                                        color: Colors.blue, width: 3),
+                                    borderRadius: BorderRadius.circular(5),
+                                  )
+                                : null,
                             child: Container(
-                                clipBehavior: widget.isHighlighted
-                                    ? Clip.hardEdge
-                                    : Clip.none,
-                                decoration: widget.isHighlighted
-                                    ? BoxDecoration(
-                                        border: Border.all(
-                                            color: Colors.blue, width: 3),
-                                        borderRadius: BorderRadius.circular(5),
-                                      )
-                                    : null,
-                                child: Container(
-                                  transform: Matrix4.translationValues(
-                                      -leftStartHandleOffsetX, 0, 0),
-                                  height:
-                                      60, // Set height for consistent layout
-                                  width: resizabletotalCanvasWitdh,
-                                  child: ListView.builder(
-                                    controller: _scrollController,
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount: widget.frameRects.length,
-                                    physics: NeverScrollableScrollPhysics(),
-                                    shrinkWrap: true,
-                                    itemBuilder: (context, index) {
-                                      final frame = widget.frameRects[index];
-                                      return RepaintBoundary(
-                                        child: CustomPaint(
-                                          size: Size(frame.width, frame.height),
-                                          painter: SpriteFramePainter(
-                                              widget.spriteSheetImage, frame),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ))),
+                              transform: Matrix4.translationValues(
+                                  -leftStartHandleOffsetX, 0, 0),
+                              height: 60, // Set height for consistent layout
+                              width: resizabletotalCanvasWitdh,
+                              child: ListView.builder(
+                                controller: _scrollController,
+                                scrollDirection: Axis.horizontal,
+                                itemCount: widget.frameRects.length,
+                                physics: NeverScrollableScrollPhysics(),
+                                shrinkWrap: true,
+                                itemBuilder: (context, index) {
+                                  final frame = widget.frameRects[index];
+                                  return RepaintBoundary(
+                                    child: CustomPaint(
+                                      size: Size(frame.width, frame.height),
+                                      painter: SpriteFramePainter(
+                                          widget.spriteSheetImage, frame),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ), //left handle
+              ), //! left handle
               if (widget.isHighlighted)
                 Positioned(
                   height: 80,
@@ -209,6 +177,7 @@ class _TrimmerState extends State<Trimmer> {
                       leftStartHandleOffsetX += details.delta.dx;
                       leftStartHandleOffsetX = leftStartHandleOffsetX.clamp(
                           0, resizabletotalCanvasWitdh - (dragHandleWidth * 2));
+                      // resizabletotalCanvasWitdh -=leftStartHandleOffsetX*0.01;
                       stateSet(() {});
                     },
                     child: HandleWidget(
@@ -217,7 +186,7 @@ class _TrimmerState extends State<Trimmer> {
                     ),
                   ),
                 ),
-              //right handle
+              //! right handle
               if (widget.isHighlighted)
                 Positioned(
                   right: 0,

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gudshow/core/utils/time_formatter.dart';
 import 'package:gudshow/split/frame_row.dart';
+import 'package:gudshow/trim/widgets/trimmer.dart';
 
 typedef MyBuilder = void Function(
     BuildContext context, void Function() splitMethod);
@@ -40,11 +41,12 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
   int? highlightedIndex;
   double currentTime = 0.0;
   List<Map<String, dynamic>> timeInfoList = [];
+  double groupBinderValue = 0;
 
   Future<void> _loadSpriteSheet() async {
     try {
       final spriteSheet = await _loadNetworkImage(
-          'https://gudsho-channelstatic.akamaized-staging.net/editor/media_1737453115474/frame_image.jpg');
+          'https://d2e983ilc6ufv4.cloudfront.net/upload_media/112/112/1271058019/frame_image.jpg');
       setState(() {
         spriteSheetImage = spriteSheet;
         initialFrames = _generateFrameRects(
@@ -225,6 +227,13 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
     // setState(() {});
   }
 
+  void groupBinder(double value) {
+    log(value.toString() + "binder value");
+    setState(() {
+      groupBinderValue = value;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -262,6 +271,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
             scrollDirection: Axis.horizontal,
             itemBuilder: (context, groupIndex) {
               return GestureDetector(
+                behavior: HitTestBehavior.translucent,
                 onTap: () => setState(() {
                   if (highlightedIndex == groupIndex) {
                     highlightedIndex = -1;
@@ -273,22 +283,28 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (groupIndex == 0) SizedBox(width: 200), // Left padding
-                    FrameRow(
-                      timeFrameUpdater: timeFrameUpdate,
-                      groupIndex: groupIndex,
-                      transformedValue: timeInfoList[groupIndex]
-                          ['transformedValue'],
-                      spriteSheetImage: spriteSheetImage!,
-                      frameRects: initialFrames,
-                      timeInfoList: timeInfoList,
-                      isHighlighted: highlightedIndex == groupIndex,
-                      totalFrames: timeInfoList[groupIndex]['totalFrames'],
-                      startTime: timeInfoList[groupIndex]['startTime'],
-                      endTime: timeInfoList[groupIndex]['endTime'],
-                      width: timeInfoList[groupIndex]['totalWidth'],
-                      totalTimeDuration: timeInfoList[groupIndex]
-                          ['totalTimeDuration'],
-                      initialSpace: 0.0,
+                    Transform.translate(
+                      offset:
+                          Offset(groupIndex != 0 ? (-groupBinderValue) : 0, 0),
+                      child: Trimmer(
+                        timeFrameUpdater: timeFrameUpdate,
+                        groupIndex: groupIndex,
+                        transformedValue: timeInfoList[groupIndex]
+                            ['transformedValue'],
+                        spriteSheetImage: spriteSheetImage!,
+                        frameRects: initialFrames,
+                        timeInfoList: timeInfoList,
+                        isHighlighted: highlightedIndex == groupIndex,
+                        totalFrames: timeInfoList[groupIndex]['totalFrames'],
+                        startTime: timeInfoList[groupIndex]['startTime'],
+                        endTime: timeInfoList[groupIndex]['endTime'],
+                        width: timeInfoList[groupIndex]['totalWidth'],
+                        totalTimeDuration: timeInfoList[groupIndex]
+                            ['totalTimeDuration'],
+                        initialSpace: 0.0,
+                        binderValue: groupBinderValue,
+                        binderUpdater: groupBinder,
+                      ),
                     ),
                     if (groupIndex == frameGroups.length - 1)
                       SizedBox(width: 180), // Right padding
