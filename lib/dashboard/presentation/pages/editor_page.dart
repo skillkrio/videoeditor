@@ -16,8 +16,7 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
   bool _isInitialized = false;
   Rect? _rect;
   late VoidCallback triggerSplit;
-  final videoUrl =
-      "https://gudsho-channelstatic.akamaized-staging.net/editor/video_001/Video_Campus_Time.mp4";
+  final videoUrl = "https://gudsho-channelstatic.akamaized-staging.net/editor/video_001/Video_Campus_Time.mp4";
   double? sourceVideoHeight;
   double? sourceVideoWidth;
   double? deviceVideoWidth;
@@ -82,13 +81,11 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
     double endTime = segment['endTime'];
 
     // Seek to start time
-    await _videoController
-        .seekTo(Duration(milliseconds: (startTime * 1000).toInt()));
+    await _videoController.seekTo(Duration(milliseconds: (startTime * 1000).toInt()));
     _videoController.play();
 
     // Wait until endTime is reached
-    Future.delayed(
-        Duration(milliseconds: ((endTime - startTime) * 1000).toInt()), () {
+    Future.delayed(Duration(milliseconds: ((endTime - startTime) * 1000).toInt()), () {
       _videoController.pause();
       currentSegmentIndex++;
 
@@ -180,8 +177,7 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
                               alignment: Alignment.center,
                               children: [
                                 AspectRatio(
-                                  aspectRatio:
-                                      _videoController.value.aspectRatio,
+                                  aspectRatio: _videoController.value.aspectRatio,
                                   child: VideoPlayer(_videoController),
                                 ),
                                 // Custom play/pause overlay
@@ -212,8 +208,7 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
                                             color: Colors.blue,
                                             height: deviceVideoHeight,
                                             width: deviceVideoWidth,
-                                            child:
-                                                VideoPlayer(_videoController),
+                                            child: VideoPlayer(_videoController),
                                           ),
                                         ),
                                       ),
@@ -295,9 +290,7 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Icon(
-                  _videoController.value.isPlaying
-                      ? Icons.pause
-                      : Icons.play_arrow,
+                  _videoController.value.isPlaying ? Icons.pause : Icons.play_arrow,
                   size: 50,
                   color: Colors.white,
                 ),
@@ -424,8 +417,7 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label,
-      {void Function()? onPressed}) {
+  Widget _buildActionButton(IconData icon, String label, {void Function()? onPressed}) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -443,7 +435,7 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
 
   Widget _buildTimeline(Function(List<Map<String, dynamic>>) timeInfoUpdater) {
     return Container(
-      height: 80,
+      height: 130,
       margin: const EdgeInsets.only(top: 16),
       child: Row(
         children: [

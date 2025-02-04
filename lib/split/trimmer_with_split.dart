@@ -6,15 +6,11 @@ import 'package:flutter/services.dart';
 import 'package:gudshow/core/utils/time_formatter.dart';
 import 'package:gudshow/trim/widgets/trimmer.dart';
 
-typedef MyBuilder = void Function(
-    BuildContext context, void Function() splitMethod);
+typedef MyBuilder = void Function(BuildContext context, void Function() splitMethod);
 
 class TrimmerAndSplit extends StatefulWidget {
   const TrimmerAndSplit(
-      {super.key,
-      required this.builder,
-      required this.isVideoInitialized,
-      required this.timeInfoUpdater});
+      {super.key, required this.builder, required this.isVideoInitialized, required this.timeInfoUpdater});
   final MyBuilder builder;
   final ValueChanged<List<Map<String, dynamic>>> timeInfoUpdater;
   final bool isVideoInitialized;
@@ -33,6 +29,9 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
   double frameDuration = 0.0;
   late int totalFrames;
   late final ScrollController _scrollController;
+  late final ScrollController _timelineScrollController;
+  bool _isSyncing = false;
+
   int clampedIndex = 0;
   final double redLinePosition = 200; // Fixed red line position (pixels)
   final double sliderWidth = 5; // Width of the red line
@@ -77,8 +76,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
     try {
       final uri = Uri.parse(url);
       final httpResponse = await NetworkAssetBundle(uri).load("");
-      final codec =
-          await ui.instantiateImageCodec(httpResponse.buffer.asUint8List());
+      final codec = await ui.instantiateImageCodec(httpResponse.buffer.asUint8List());
       final frameInfo = await codec.getNextFrame();
       return frameInfo.image;
     } catch (e) {
@@ -86,8 +84,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
     }
   }
 
-  List<Rect> _generateFrameRects(
-      int width, int height, int frameWidth, int frameHeight) {
+  List<Rect> _generateFrameRects(int width, int height, int frameWidth, int frameHeight) {
     final columns = width ~/ frameWidth;
     final rows = height ~/ frameHeight;
     final rects = <Rect>[];
@@ -113,8 +110,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
     final adjustedScrollOffset = scrollOffset - 200;
 
     // Calculate floating-point frame index at red line position
-    final double redLineExactFrameIndex =
-        (adjustedScrollOffset + redLinePosition) / frameWidth;
+    final double redLineExactFrameIndex = (adjustedScrollOffset + redLinePosition) / frameWidth;
 
     // Clamp within valid frame range
     clampedIndex = redLineExactFrameIndex.floor().clamp(0, totalFrames - 1);
@@ -146,8 +142,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
       // Check if the split time falls within this group's time range
       if (currentTime >= groupStartTime && currentTime <= groupEndTime) {
         // Calculate the exact split index based on time
-        int splitIndex =
-            ((currentTime - groupStartTime) / frameDuration).round();
+        int splitIndex = ((currentTime - groupStartTime) / frameDuration).round();
 
         // Ensure splitIndex is within bounds
         if (splitIndex < 0 || splitIndex >= group.length) return;
@@ -169,10 +164,8 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
         double secondPartEnd = double.parse(groupEndTime.toStringAsFixed(2));
 
         // Compute width using time-to-width conversion
-        double firstPartWidth =
-            ((firstPartEnd - firstPartStart) / frameDuration) * frameWidth;
-        double secondPartWidth =
-            ((secondPartEnd - secondPartStart) / frameDuration) * frameWidth;
+        double firstPartWidth = ((firstPartEnd - firstPartStart) / frameDuration) * frameWidth;
+        double secondPartWidth = ((secondPartEnd - secondPartStart) / frameDuration) * frameWidth;
 
         // Insert the new time info
         newTimeInfoList.add({
@@ -180,8 +173,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
           'startTime': firstPartStart,
           'endTime': firstPartEnd,
           'totalWidth': firstPartWidth,
-          'totalTimeDuration':
-              double.parse((firstPartEnd - firstPartStart).toStringAsFixed(2)),
+          'totalTimeDuration': double.parse((firstPartEnd - firstPartStart).toStringAsFixed(2)),
           'totalFrames': firstPart.length,
           'transformedValue': firstPartStart
         });
@@ -191,17 +183,14 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
           'startTime': secondPartStart,
           'endTime': secondPartEnd,
           'totalWidth': secondPartWidth,
-          'totalTimeDuration': double.parse(
-              (secondPartEnd - secondPartStart).toStringAsFixed(2)),
+          'totalTimeDuration': double.parse((secondPartEnd - secondPartStart).toStringAsFixed(2)),
           'totalFrames': secondPart.length,
           'transformedValue': secondPartStart
         });
         highlightedIndex = i + 1;
         print("Split at time: $currentTime");
-        print(
-            "First part: Start $firstPartStart, End $firstPartEnd, Width $firstPartWidth");
-        print(
-            "Second part: Start $secondPartStart, End $secondPartEnd, Width $secondPartWidth");
+        print("First part: Start $firstPartStart, End $firstPartEnd, Width $firstPartWidth");
+        print("Second part: Start $secondPartStart, End $secondPartEnd, Width $secondPartWidth");
       } else {
         newFrameGroups.add(group);
         newTimeInfoList.add(timeInfo);
@@ -238,7 +227,22 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
     _loadSpriteSheet();
     widget.builder.call(context, _splitFrames);
     _scrollController = ScrollController();
+    _timelineScrollController = ScrollController();
     _scrollController.addListener(_onScroll);
+    _scrollController.addListener(() {
+      _syncScroll(_scrollController, _timelineScrollController);
+    });
+
+    _timelineScrollController.addListener(() {
+      _syncScroll(_timelineScrollController, _scrollController);
+    });
+  }
+
+  void _syncScroll(ScrollController source, ScrollController target) {
+    if (_isSyncing) return; // Prevents infinite loop
+    _isSyncing = true;
+    target.jumpTo(source.offset);
+    _isSyncing = false;
   }
 
   @override
@@ -257,88 +261,125 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
     List<Rect> allFrames = frameGroups.expand((group) => group).toList();
     double totalTime = allFrames.length * frameDuration; // Total video duration
 
-    return SizedBox(
-      height: 100,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Scrollable Frame List
-          ListView.builder(
-            controller: _scrollController,
-            itemCount: timeInfoList.length,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: 30,
+          child: ListView.builder(
+            controller: _timelineScrollController,
             scrollDirection: Axis.horizontal,
-            itemBuilder: (context, groupIndex) {
-              return GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: () => setState(() {
-                  if (highlightedIndex == groupIndex) {
-                    highlightedIndex = -1;
-                    return;
-                  }
-                  highlightedIndex = groupIndex; // Highlight the group
-                }),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (groupIndex == 0) SizedBox(width: 200), // Left padding
-                    Transform.translate(
-                      offset:
-                          Offset(groupIndex != 0 ? (-groupBinderValue) : 0, 0),
-                      child: Trimmer(
-                        timeFrameUpdater: timeFrameUpdate,
-                        groupIndex: groupIndex,
-                        transformedValue: timeInfoList[groupIndex]
-                            ['transformedValue'],
-                        spriteSheetImage: spriteSheetImage!,
-                        frameRects: initialFrames,
-                        timeInfoList: timeInfoList,
-                        isHighlighted: highlightedIndex == groupIndex,
-                        totalFrames: timeInfoList[groupIndex]['totalFrames'],
-                        startTime: timeInfoList[groupIndex]['startTime'],
-                        endTime: timeInfoList[groupIndex]['endTime'],
-                        width: timeInfoList[groupIndex]['totalWidth'],
-                        totalTimeDuration: timeInfoList[groupIndex]
-                            ['totalTimeDuration'],
-                        initialSpace: 0.0,
-                        binderValue: groupBinderValue,
-                        binderUpdater: groupBinder,
-                      ),
-                    ),
-                    if (groupIndex == frameGroups.length - 1)
-                      SizedBox(width: 180), // Right padding
-                  ],
+            itemCount: (timeInfoList.fold(0.0, (sum, timeInfo) => sum + timeInfo['totalWidth']) / frameWidth).ceil() +
+                2, // +2 for padding
+            itemBuilder: (context, index) {
+              // Calculate total width by summing the totalWidth values of all timeInfoList items
+              double totalWidthSum = timeInfoList.fold(0.0, (sum, timeInfo) => sum + timeInfo['totalWidth']);
+
+              // Calculate the total duration based on totalWidth and frame duration
+              double totalDuration = timeInfoList.fold(0.0, (sum, timeInfo) => sum + timeInfo['totalTimeDuration']);
+
+              // Handle padding logic for the first and last items
+              if (index == 0) {
+                return SizedBox(width: redLinePosition); // Padding at the start
+              } else if (index ==
+                  (timeInfoList.fold(0.0, (sum, timeInfo) => sum + timeInfo['totalWidth']) / frameWidth).ceil() + 1) {
+                return SizedBox(width: redLinePosition); // Padding at the end
+              }
+
+              // Calculate the time for the current frame based on the width and totalWidth
+              double timeForFrame = ((index - 1) * frameWidth) / totalWidthSum * totalDuration;
+
+              return SizedBox(
+                width: 100, // Ensure width matches frame width
+                child: Text(
+                  "${timeForFrame.toStringAsFixed(2)}s\n|",
+                  textAlign: TextAlign.start,
+                  style: TextStyle(fontSize: 15, color: Colors.grey, height: 1),
                 ),
               );
             },
           ),
+        ),
+        SizedBox(
+          height: 100,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Scrollable Frame List
+              ListView.builder(
+                controller: _scrollController,
+                itemCount: timeInfoList.length,
+                scrollDirection: Axis.horizontal,
+                itemBuilder: (context, groupIndex) {
+                  return GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () => setState(() {
+                      if (highlightedIndex == groupIndex) {
+                        highlightedIndex = -1;
+                        return;
+                      }
+                      highlightedIndex = groupIndex; // Highlight the group
+                    }),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (groupIndex == 0) SizedBox(width: 200), // Left padding
+                        Transform.translate(
+                          offset: Offset(groupIndex != 0 ? (-groupBinderValue) : 0, 0),
+                          child: Trimmer(
+                            timeFrameUpdater: timeFrameUpdate,
+                            groupIndex: groupIndex,
+                            transformedValue: timeInfoList[groupIndex]['transformedValue'],
+                            spriteSheetImage: spriteSheetImage!,
+                            frameRects: initialFrames,
+                            timeInfoList: timeInfoList,
+                            isHighlighted: highlightedIndex == groupIndex,
+                            totalFrames: timeInfoList[groupIndex]['totalFrames'],
+                            startTime: timeInfoList[groupIndex]['startTime'],
+                            endTime: timeInfoList[groupIndex]['endTime'],
+                            width: timeInfoList[groupIndex]['totalWidth'],
+                            totalTimeDuration: timeInfoList[groupIndex]['totalTimeDuration'],
+                            initialSpace: 0.0,
+                            binderValue: groupBinderValue,
+                            binderUpdater: groupBinder,
+                          ),
+                        ),
+                        if (groupIndex == frameGroups.length - 1) SizedBox(width: 180), // Right padding
+                      ],
+                    ),
+                  );
+                },
+              ),
 
-          // White Tracking Line
-          Positioned(
-            left: redLinePosition - sliderWidth / 2,
-            top: 0,
-            bottom: 0,
-            child: Container(
-              width: sliderWidth,
-              color: Colors.red, // Changed from red to white
-            ),
+              // White Tracking Line
+              Positioned(
+                left: redLinePosition - sliderWidth / 2,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: sliderWidth,
+                  color: Colors.red, // Changed from red to white
+                ),
+              ),
+              // Positioned(
+              //     top: -20,
+              //     right: 0,
+              //     child: Text(
+              //       currentTime.toString().padLeft(2, '0'),
+              //       style: TextStyle(color: Colors.white),
+              //     )),
+              // Positioned(
+              //   top: -20,
+              //   right: 0,
+              //   child: Text(
+              //     "Current - " + formatTime(currentTime),
+              //     style: TextStyle(color: Colors.white),
+              //   ),
+              // )
+            ],
           ),
-          // Positioned(
-          //     top: -20,
-          //     right: 0,
-          //     child: Text(
-          //       currentTime.toString().padLeft(2, '0'),
-          //       style: TextStyle(color: Colors.white),
-          //     )),
-          Positioned(
-            top: -20,
-            right: 0,
-            child: Text(
-              "Current - " + formatTime(currentTime),
-              style: TextStyle(color: Colors.white),
-            ),
-          )
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
