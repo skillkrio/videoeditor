@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:gudshow/dashboard/presentation/pages/editor_page.dart';
-import 'package:gudshow/split/trimmer_with_split.dart';
 
 class EditorDashBoardPage extends StatefulWidget {
   const EditorDashBoardPage({super.key});

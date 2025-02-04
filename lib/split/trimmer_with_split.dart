@@ -21,16 +21,16 @@ class TrimmerAndSplit extends StatefulWidget {
 
 class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
   ui.Image? spriteSheetImage;
-  List<List<Rect>> frameGroups = []; // Flat list of frame groups
+  List<List<Rect>> frameGroups = [];
   late List<Rect> initialFrames;
   final int frameWidth = 100;
   final int frameHeight = 60;
-  final double totalDuration = 10.0; // Total video duration in seconds
+  final double totalDuration = 10.0;
   double frameDuration = 0.0;
   late int totalFrames;
   late final ScrollController _scrollController;
   late final ScrollController _timelineScrollController;
-  bool _isSyncing = false; // Prevents circular updates
+  bool _isSyncing = false;
 
   int clampedIndex = 0;
   late double redLinePosition; // Fixed red line position (pixels)
@@ -114,21 +114,13 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
   void _onScroll() {
     final scrollOffset = _scrollController.offset;
 
-    // Adjusted scroll offset to account for left padding (200px)
     final adjustedScrollOffset = scrollOffset - redLinePosition;
 
-    // Calculate floating-point frame index at red line position
     final double redLineExactFrameIndex = (adjustedScrollOffset + redLinePosition) / frameWidth;
 
-    // Clamp within valid frame range
     clampedIndex = redLineExactFrameIndex.floor().clamp(0, totalFrames - 1);
 
-    // Get exact time based on fractional frame position
     currentTime = redLineExactFrameIndex * frameDuration;
-
-    print("Frame at red line: $clampedIndex");
-    print("Exact Time: ${currentTime.toStringAsFixed(2)}s");
-
     setState(() {});
   }
 
@@ -148,33 +140,29 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
       double groupEndTime = timeInfo['endTime'];
 
       if (currentTime >= groupStartTime && currentTime <= groupEndTime) {
-        int splitIndex = ((currentTime - groupStartTime) / frameDuration).round();
-        // Ensure splitIndex is within bounds
-        if (splitIndex < 0 || splitIndex >= group.length) return;
+        int splitIndex = ((currentTime - groupStartTime) / frameDuration).floor();
 
-        // Split the frames
+        if (splitIndex < 0) splitIndex = 0;
+        if (splitIndex >= group.length) splitIndex = group.length - 1;
+
         List<Rect> firstPart = group.sublist(0, splitIndex + 1);
         List<Rect> secondPart = group.sublist(splitIndex + 1);
 
         newFrameGroups.add(firstPart);
         newFrameGroups.add(secondPart);
 
-        // Remove the old time info entry before adding new ones
         if (timeInfoList[i]['index'] == 'init') {
           timeInfoList.removeAt(i);
         }
 
-        // Update time values (rounded to 2 decimal places)
         double firstPartStart = groupStartTime;
         double firstPartEnd = double.parse(currentTime.toStringAsFixed(2));
         double secondPartStart = firstPartEnd;
         double secondPartEnd = double.parse(groupEndTime.toStringAsFixed(2));
 
-        // Compute width using time-to-width conversion
         double firstPartWidth = ((firstPartEnd - firstPartStart) / frameDuration) * frameWidth;
         double secondPartWidth = ((secondPartEnd - secondPartStart) / frameDuration) * frameWidth;
 
-        // Insert the new time info
         newTimeInfoList.add({
           'index': '${i}_first',
           'startTime': firstPartStart,
@@ -196,14 +184,13 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
           'initialSpace': calculateWidthFromTime(secondPartStart),
           'transformedValue': secondPartStart
         });
+
         highlightedIndex = i + 1;
-        print("Split at time: $currentTime");
-        print("First part: Start $firstPartStart, End $firstPartEnd, Width $firstPartWidth");
-        print("Second part: Start $secondPartStart, End $secondPartEnd, Width $secondPartWidth");
       } else {
         newFrameGroups.add(group);
         newTimeInfoList.add(timeInfo);
       }
+
       widget.timeInfoUpdater(newTimeInfoList);
       accumulatedCount += group.length;
     }
@@ -212,14 +199,11 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
       frameGroups = newFrameGroups;
       timeInfoList = newTimeInfoList;
     });
-
-    print("Updated Time Info List: $timeInfoList");
   }
 
   void timeFrameUpdate(Map<String, dynamic> info, int index) {
     timeInfoList[index] = info;
     log(timeInfoList.toString());
-    //     setState(() {});
   }
 
   void groupBinder(double value) {
@@ -273,10 +257,6 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
     if (spriteSheetImage == null || !widget.isVideoInitialized) {
       return Center(child: CircularProgressIndicator());
     }
-
-    List<Rect> allFrames = frameGroups.expand((group) => group).toList();
-    double totalTime = allFrames.length * frameDuration; // Total video duration
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -288,25 +268,18 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
             itemCount: (timeInfoList.fold(0.0, (sum, timeInfo) => sum + timeInfo['totalWidth']) / frameWidth).ceil() +
                 2, // +2 for padding
             itemBuilder: (context, index) {
-              // Calculate total width by summing the totalWidth values of all timeInfoList items
               double totalWidthSum = timeInfoList.fold(0.0, (sum, timeInfo) => sum + timeInfo['totalWidth']);
-
-              // Calculate the total duration based on totalWidth and frame duration
               double totalDuration = timeInfoList.fold(0.0, (sum, timeInfo) => sum + timeInfo['totalTimeDuration']);
-
-              // Handle padding logic for the first and last items
+              double timeForFrame = ((index - 1) * frameWidth) / totalWidthSum * totalDuration;
               if (index == 0) {
                 return SizedBox(width: redLinePosition); // Padding at the start
-              } else if (index ==
-                  (timeInfoList.fold(0.0, (sum, timeInfo) => sum + timeInfo['totalWidth']) / frameWidth).ceil() + 1) {
-                return SizedBox(width: redLinePosition); // Padding at the end
               }
-
-              // Calculate the time for the current frame based on the width and totalWidth
-              double timeForFrame = ((index - 1) * frameWidth) / totalWidthSum * totalDuration;
-
               return SizedBox(
-                width: 100,
+                width: (index ==
+                        (timeInfoList.fold(0.0, (sum, timeInfo) => sum + timeInfo['totalWidth']) / frameWidth).ceil() +
+                            1)
+                    ? redLinePosition
+                    : 100,
                 child: Text(
                   "${timeForFrame.toStringAsFixed(2)}s\n|",
                   textAlign: TextAlign.start,
@@ -360,8 +333,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
                             binderUpdater: groupBinder,
                           ),
                         ),
-                        if (groupIndex == frameGroups.length - 1)
-                          SizedBox(width: MediaQuery.sizeOf(context).width * .45), // Right padding
+                        if (groupIndex == frameGroups.length - 1) SizedBox(width: 200), // Right padding
                       ],
                     ),
                   );
