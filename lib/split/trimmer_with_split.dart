@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'dart:developer';
-
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gudshow/core/utils/time_formatter.dart';
-import 'package:gudshow/split/frame_row.dart';
 import 'package:gudshow/trim/widgets/trimmer.dart';
 
 typedef MyBuilder = void Function(
