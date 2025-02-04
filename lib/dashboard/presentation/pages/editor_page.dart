@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:gudshow/core/painters/video_crop_custom_clipper.dart';
 import 'package:gudshow/crop/crop_screen.dart';
@@ -16,15 +18,17 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
   bool _isInitialized = false;
   Rect? _rect;
   late VoidCallback triggerSplit;
-  final videoUrl = "https://gudsho-channelstatic.akamaized-staging.net/editor/video_001/Video_Campus_Time.mp4";
+  final videoUrl =
+      "https://gudsho-channelstatic.akamaized-staging.net/editor/video_001/Video_Campus_Time.mp4";
   double? sourceVideoHeight;
   double? sourceVideoWidth;
   double? deviceVideoWidth;
   double? deviceVideoHeight;
   int currentSegmentIndex = 0;
-  List<Map<String, dynamic>> timeInfo = [];
+  List<Map<String, dynamic>> timeInfos = [];
   bool isPlayingSegments = false;
   double aspectRatio = 16 / 9;
+
   @override
   void initState() {
     super.initState();
@@ -44,12 +48,18 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
       // await _videoController.setLooping(true);
       setState(() {
         _isInitialized = true;
-        playNextSegment();
       });
     } catch (e) {
       debugPrint('Error initializing video: $e');
     }
   }
+
+  // void _videoListener() {
+  //   if (_videoController.value.position >=
+  //       Duration(seconds: maxDuration.toInt())) {
+  //     _videoController.pause();
+  //   }
+  // }
 
   @override
   void dispose() {
@@ -58,52 +68,35 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
   }
 
   void timeInfoUpdater(List<Map<String, dynamic>> info) {
-    timeInfo = info;
+    timeInfos = info;
+    currentSegmentIndex = timeInfos.length - 1;
+    log("segment len - ${info.length}");
+    //! get length here
   }
 
-  void playpause() {
-    setState(() {
-      if (_videoController.value.isPlaying) {
-        _videoController.pause();
-      } else {
-        _videoController.play();
-      }
-    });
-  }
-
-  void playNextSegment() async {
-    if (!isPlayingSegments || currentSegmentIndex >= timeInfo.length) {
+  void _playSegment(int index) {
+    if (index >= timeInfos.length) return; // Stop if all segments are played
+    if (_videoController.value.isPlaying) {
+      _videoController.pause();
       return;
     }
 
-    Map<String, dynamic> segment = timeInfo[currentSegmentIndex];
-    double startTime = segment['startTime'];
-    double endTime = segment['endTime'];
+    double startTime = timeInfos[index]['startTime'];
+    double endTime = timeInfos[index]['endTime'];
 
-    // Seek to start time
-    await _videoController.seekTo(Duration(milliseconds: (startTime * 1000).toInt()));
+    _videoController.seekTo(Duration(milliseconds: (startTime * 1000).toInt()));
     _videoController.play();
 
-    // Wait until endTime is reached
-    Future.delayed(Duration(milliseconds: ((endTime - startTime) * 1000).toInt()), () {
+    Future.delayed(
+        Duration(milliseconds: ((endTime - startTime) * 1000).toInt()), () {
       _videoController.pause();
       currentSegmentIndex++;
 
-      if (currentSegmentIndex < timeInfo.length) {
-        startPlayingSegments();
-      } else {
-        currentSegmentIndex = 0; // Reset for looping
-        startPlayingSegments();
+      if (currentSegmentIndex < timeInfos.length) {
+        _playSegment(currentSegmentIndex);
       }
     });
-  }
-
-  void startPlayingSegments() {
-    if (!isPlayingSegments) {
-      isPlayingSegments = true;
-      currentSegmentIndex = 0;
-      playNextSegment();
-    }
+    setState(() {});
   }
 
   void ratio(double ratio) {
@@ -177,7 +170,8 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
                               alignment: Alignment.center,
                               children: [
                                 AspectRatio(
-                                  aspectRatio: _videoController.value.aspectRatio,
+                                  aspectRatio:
+                                      _videoController.value.aspectRatio,
                                   child: VideoPlayer(_videoController),
                                 ),
                                 // Custom play/pause overlay
@@ -208,14 +202,17 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
                                             color: Colors.blue,
                                             height: deviceVideoHeight,
                                             width: deviceVideoWidth,
-                                            child: VideoPlayer(_videoController),
+                                            child:
+                                                VideoPlayer(_videoController),
                                           ),
                                         ),
                                       ),
                                     ),
                                     CircleAvatar(
                                       child: IconButton(
-                                        onPressed: playpause,
+                                        onPressed: () {
+                                          _playSegment(currentSegmentIndex);
+                                        },
                                         icon: _videoController.value.isPlaying
                                             ? Icon(Icons.pause)
                                             : Icon(Icons.play_arrow),
@@ -272,7 +269,7 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
           if (_videoController.value.isPlaying) {
             _videoController.pause();
           } else {
-            _videoController.play();
+            _playSegment(currentSegmentIndex);
           }
         });
       },
@@ -290,7 +287,9 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Icon(
-                  _videoController.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                  _videoController.value.isPlaying
+                      ? Icons.pause
+                      : Icons.play_arrow,
                   size: 50,
                   color: Colors.white,
                 ),
@@ -351,7 +350,7 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
           ),
           iconSize: 48,
           onPressed: () {
-            playpause();
+            _playSegment(currentSegmentIndex);
           },
         ),
         IconButton(
@@ -417,7 +416,8 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label, {void Function()? onPressed}) {
+  Widget _buildActionButton(IconData icon, String label,
+      {void Function()? onPressed}) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -452,9 +452,7 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
               builder: (context, splitMethod) {
                 triggerSplit = splitMethod;
               },
-              timeInfoUpdater: (List<Map<String, dynamic>> timeInfos) {
-                timeInfoUpdater(timeInfos);
-              },
+              timeInfoUpdater: timeInfoUpdater,
             ),
           ),
         ],

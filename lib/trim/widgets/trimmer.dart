@@ -3,7 +3,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:gudshow/core/painters/spirite_painter.dart';
 import 'package:gudshow/trim/widgets/handle_wdiget.dart';
-import 'package:gudshow/core/painters/master_clipper.dart';
 
 class Trimmer extends StatefulWidget {
   final ui.Image spriteSheetImage;
@@ -111,13 +110,14 @@ class _TrimmerState extends State<Trimmer> {
       return StatefulBuilder(builder: (context, stateSet) {
         return SizedBox(
           height: 100,
-          width: resizabletotalCanvasWitdh,
+          width: resizabletotalCanvasWitdh +
+              (widget.isHighlighted ? dragHandleWidth * 2 : 0),
           child: Stack(
-            clipBehavior: Clip.none,
             children: [
               //Thumbmail
               Positioned(
-                left: leftStartHandleOffsetX,
+                left: leftStartHandleOffsetX +
+                    (widget.isHighlighted ? dragHandleWidth : 0),
                 height: 60,
                 width: resizabletotalCanvasWitdh,
                 child: Container(
@@ -130,12 +130,15 @@ class _TrimmerState extends State<Trimmer> {
                           clipBehavior: Clip.hardEdge,
                           decoration: widget.isHighlighted
                               ? BoxDecoration(
-                                  border: Border.all(color: Colors.blue, width: 3),
-                                  borderRadius: BorderRadius.circular(5),
+                                  border:
+                                      Border.all(color: Colors.blue, width: 3),
+                                  borderRadius: BorderRadius.circular(0),
                                 )
-                              : BoxDecoration(),
+                              : BoxDecoration(
+                                  border: Border.all(color: Colors.white)),
                           child: Container(
-                            transform: Matrix4.translationValues(-leftStartHandleOffsetX, 0, 0),
+                            transform: Matrix4.translationValues(
+                                -leftStartHandleOffsetX, 0, 0),
                             height: 60, // Set height for consistent layout
                             width: resizabletotalCanvasWitdh,
                             child: ListView.builder(
@@ -149,7 +152,8 @@ class _TrimmerState extends State<Trimmer> {
                                 return RepaintBoundary(
                                   child: CustomPaint(
                                     size: Size(frame.width, frame.height),
-                                    painter: SpriteFramePainter(widget.spriteSheetImage, frame),
+                                    painter: SpriteFramePainter(
+                                        widget.spriteSheetImage, frame),
                                   ),
                                 );
                               },
@@ -184,7 +188,8 @@ class _TrimmerState extends State<Trimmer> {
                     },
                     onHorizontalDragUpdate: (details) {
                       leftStartHandleOffsetX += details.delta.dx;
-                      leftStartHandleOffsetX = leftStartHandleOffsetX.clamp(0, resizabletotalCanvasWitdh);
+                      leftStartHandleOffsetX = leftStartHandleOffsetX.clamp(
+                          0, resizabletotalCanvasWitdh);
                       // resizabletotalCanvasWitdh -=leftStartHandleOffsetX*0.01;
                       log(leftStartHandleOffsetX.toString());
                       stateSet(() {});
@@ -210,22 +215,46 @@ class _TrimmerState extends State<Trimmer> {
                           transformedValue: leftStartHandleOffsetX);
                     },
                     onHorizontalDragUpdate: (details) {
+                      // final double dx = details.delta.dx;
+                      // final double newWidth = resizabletotalCanvasWitdh + dx;
+
+                      // // Adjust clamping range to prevent getting stuck
+                      // final double minWidth =
+                      //     0; // Set a reasonable minimum width
+                      // //! modify maxwidth to take only the available space
+                      // final double maxWidth =
+                      //     totalCanvasWidth + 1000; // Allow some expansion
+
+                      // resizabletotalCanvasWitdh = double.parse(newWidth
+                      //     .clamp(minWidth, maxWidth)
+                      //     .toStringAsFixed(2));
+
+                      // log("Dragged DX: $dx");
+                      // log("Updated Width: $resizabletotalCanvasWitdh");
+
+                      // stateSet(() {}); // Update UI
+                      // Given: 0.25 sec corresponds to 100 px, so 1 sec = 400 px and 1 ms = 0.4 px.
                       final double dx = details.delta.dx;
                       final double newWidth = resizabletotalCanvasWitdh + dx;
 
                       // Adjust clamping range to prevent getting stuck
-                      final double minWidth = 0; // Set a reasonable minimum width
+                      final double minWidth =
+                          0; // Set a reasonable minimum width
                       //! modify maxwidth to take only the available space
-                      final double maxWidth = totalCanvasWidth + 1000; // Allow some expansion
+                      final double maxWidth =
+                          totalCanvasWidth + 1000; // Allow some expansion
 
-                      resizabletotalCanvasWitdh = double.parse(newWidth.clamp(minWidth, maxWidth).toStringAsFixed(2));
+                      resizabletotalCanvasWitdh = double.parse(newWidth
+                          .clamp(minWidth, maxWidth)
+                          .toStringAsFixed(2));
 
                       log("Dragged DX: $dx");
                       log("Updated Width: $resizabletotalCanvasWitdh");
 
                       stateSet(() {}); // Update UI
                     },
-                    child: HandleWidget(height: dragHandleHeight, width: dragHandleWidth),
+                    child: HandleWidget(
+                        height: dragHandleHeight, width: dragHandleWidth),
                   ),
                 ),
             ],

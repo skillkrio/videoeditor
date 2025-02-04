@@ -6,11 +6,15 @@ import 'package:flutter/services.dart';
 import 'package:gudshow/core/utils/time_formatter.dart';
 import 'package:gudshow/trim/widgets/trimmer.dart';
 
-typedef MyBuilder = void Function(BuildContext context, void Function() splitMethod);
+typedef MyBuilder = void Function(
+    BuildContext context, void Function() splitMethod);
 
 class TrimmerAndSplit extends StatefulWidget {
   const TrimmerAndSplit(
-      {super.key, required this.builder, required this.isVideoInitialized, required this.timeInfoUpdater});
+      {super.key,
+      required this.builder,
+      required this.isVideoInitialized,
+      required this.timeInfoUpdater});
   final MyBuilder builder;
   final ValueChanged<List<Map<String, dynamic>>> timeInfoUpdater;
   final bool isVideoInitialized;
@@ -43,7 +47,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
   Future<void> _loadSpriteSheet() async {
     try {
       final spriteSheet = await _loadNetworkImage(
-          'https://d2e983ilc6ufv4.cloudfront.net/upload_media/112/112/1271058019/frame_image.jpg');
+          'https://gudsho-channelstatic.akamaized-staging.net/editor/media_1730714997978/frame_image.jpg');
       setState(() {
         spriteSheetImage = spriteSheet;
         initialFrames = _generateFrameRects(
@@ -77,7 +81,8 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
     try {
       final uri = Uri.parse(url);
       final httpResponse = await NetworkAssetBundle(uri).load("");
-      final codec = await ui.instantiateImageCodec(httpResponse.buffer.asUint8List());
+      final codec =
+          await ui.instantiateImageCodec(httpResponse.buffer.asUint8List());
       final frameInfo = await codec.getNextFrame();
       return frameInfo.image;
     } catch (e) {
@@ -85,7 +90,8 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
     }
   }
 
-  List<Rect> _generateFrameRects(int width, int height, int frameWidth, int frameHeight) {
+  List<Rect> _generateFrameRects(
+      int width, int height, int frameWidth, int frameHeight) {
     final columns = width ~/ frameWidth;
     final rows = height ~/ frameHeight;
     final rects = <Rect>[];
@@ -116,7 +122,8 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
 
     final adjustedScrollOffset = scrollOffset - redLinePosition;
 
-    final double redLineExactFrameIndex = (adjustedScrollOffset + redLinePosition) / frameWidth;
+    final double redLineExactFrameIndex =
+        (adjustedScrollOffset + redLinePosition) / frameWidth;
 
     clampedIndex = redLineExactFrameIndex.floor().clamp(0, totalFrames - 1);
 
@@ -140,7 +147,8 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
       double groupEndTime = timeInfo['endTime'];
 
       if (currentTime >= groupStartTime && currentTime <= groupEndTime) {
-        int splitIndex = ((currentTime - groupStartTime) / frameDuration).floor();
+        int splitIndex =
+            ((currentTime - groupStartTime) / frameDuration).floor();
 
         if (splitIndex < 0) splitIndex = 0;
         if (splitIndex >= group.length) splitIndex = group.length - 1;
@@ -160,15 +168,18 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
         double secondPartStart = firstPartEnd;
         double secondPartEnd = double.parse(groupEndTime.toStringAsFixed(2));
 
-        double firstPartWidth = ((firstPartEnd - firstPartStart) / frameDuration) * frameWidth;
-        double secondPartWidth = ((secondPartEnd - secondPartStart) / frameDuration) * frameWidth;
+        double firstPartWidth =
+            ((firstPartEnd - firstPartStart) / frameDuration) * frameWidth;
+        double secondPartWidth =
+            ((secondPartEnd - secondPartStart) / frameDuration) * frameWidth;
 
         newTimeInfoList.add({
           'index': '${i}_first',
           'startTime': firstPartStart,
           'endTime': firstPartEnd,
           'totalWidth': firstPartWidth,
-          'totalTimeDuration': double.parse((firstPartEnd - firstPartStart).toStringAsFixed(2)),
+          'totalTimeDuration':
+              double.parse((firstPartEnd - firstPartStart).toStringAsFixed(2)),
           'totalFrames': firstPart.length,
           'initialSpace': calculateWidthFromTime(firstPartStart),
           'transformedValue': firstPartStart
@@ -179,13 +190,19 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
           'startTime': secondPartStart,
           'endTime': secondPartEnd,
           'totalWidth': secondPartWidth,
-          'totalTimeDuration': double.parse((secondPartEnd - secondPartStart).toStringAsFixed(2)),
+          'totalTimeDuration': double.parse(
+              (secondPartEnd - secondPartStart).toStringAsFixed(2)),
           'totalFrames': secondPart.length,
           'initialSpace': calculateWidthFromTime(secondPartStart),
           'transformedValue': secondPartStart
         });
 
         highlightedIndex = i + 1;
+        print("Split at time: $currentTime");
+        print(
+            "First part: Start $firstPartStart, End $firstPartEnd, Width $firstPartWidth");
+        print(
+            "Second part: Start $secondPartStart, End $secondPartEnd, Width $secondPartWidth");
       } else {
         newFrameGroups.add(group);
         newTimeInfoList.add(timeInfo);
@@ -265,18 +282,30 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
           child: ListView.builder(
             controller: _timelineScrollController,
             scrollDirection: Axis.horizontal,
-            itemCount: (timeInfoList.fold(0.0, (sum, timeInfo) => sum + timeInfo['totalWidth']) / frameWidth).ceil() +
+            itemCount: (timeInfoList.fold(0.0,
+                            (sum, timeInfo) => sum + timeInfo['totalWidth']) /
+                        frameWidth)
+                    .ceil() +
                 2, // +2 for padding
             itemBuilder: (context, index) {
-              double totalWidthSum = timeInfoList.fold(0.0, (sum, timeInfo) => sum + timeInfo['totalWidth']);
-              double totalDuration = timeInfoList.fold(0.0, (sum, timeInfo) => sum + timeInfo['totalTimeDuration']);
-              double timeForFrame = ((index - 1) * frameWidth) / totalWidthSum * totalDuration;
+              double totalWidthSum = timeInfoList.fold(
+                  0.0, (sum, timeInfo) => sum + timeInfo['totalWidth']);
+              double totalDuration = timeInfoList.fold(
+                  0.0, (sum, timeInfo) => sum + timeInfo['totalTimeDuration']);
+              double timeForFrame =
+                  ((index - 1) * frameWidth) / totalWidthSum * totalDuration;
               if (index == 0) {
                 return SizedBox(width: redLinePosition); // Padding at the start
               }
+
               return SizedBox(
                 width: (index ==
-                        (timeInfoList.fold(0.0, (sum, timeInfo) => sum + timeInfo['totalWidth']) / frameWidth).ceil() +
+                        (timeInfoList.fold(
+                                        0.0,
+                                        (sum, timeInfo) =>
+                                            sum + timeInfo['totalWidth']) /
+                                    frameWidth)
+                                .ceil() +
                             1)
                     ? redLinePosition
                     : 100,
@@ -312,28 +341,38 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (groupIndex == 0) SizedBox(width: MediaQuery.sizeOf(context).width * .35), // Left padding
+                        if (groupIndex == 0)
+                          SizedBox(
+                              width: MediaQuery.sizeOf(context).width *
+                                  .35), // Left padding
                         Transform.translate(
-                          offset: Offset(groupIndex != 0 ? (-groupBinderValue) : 0, 0),
+                          offset: Offset(
+                              groupIndex != 0 ? (-groupBinderValue) : 0, 0),
                           child: Trimmer(
                             timeFrameUpdater: timeFrameUpdate,
                             groupIndex: groupIndex,
-                            transformedValue: timeInfoList[groupIndex]['transformedValue'] ?? 0,
+                            transformedValue: timeInfoList[groupIndex]
+                                    ['transformedValue'] ??
+                                0,
                             spriteSheetImage: spriteSheetImage!,
                             frameRects: initialFrames,
                             timeInfoList: timeInfoList,
                             isHighlighted: highlightedIndex == groupIndex,
-                            totalFrames: timeInfoList[groupIndex]['totalFrames'],
+                            totalFrames: timeInfoList[groupIndex]
+                                ['totalFrames'],
                             startTime: timeInfoList[groupIndex]['startTime'],
                             endTime: timeInfoList[groupIndex]['endTime'],
                             width: timeInfoList[groupIndex]['totalWidth'],
-                            totalTimeDuration: timeInfoList[groupIndex]['totalTimeDuration'],
-                            initialSpace: timeInfoList[groupIndex]['initialSpace'],
+                            totalTimeDuration: timeInfoList[groupIndex]
+                                ['totalTimeDuration'],
+                            initialSpace: timeInfoList[groupIndex]
+                                ['initialSpace'],
                             binderValue: groupBinderValue,
                             binderUpdater: groupBinder,
                           ),
                         ),
-                        if (groupIndex == frameGroups.length - 1) SizedBox(width: 200), // Right padding
+                        if (groupIndex == frameGroups.length - 1)
+                          SizedBox(width: 200), // Right padding
                       ],
                     ),
                   );
@@ -342,7 +381,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
 
               // White Tracking Line
               Positioned(
-                left: redLinePosition - sliderWidth / 2,
+                left: (redLinePosition - sliderWidth / 2),
                 top: 0,
                 bottom: 0,
                 child: Container(
