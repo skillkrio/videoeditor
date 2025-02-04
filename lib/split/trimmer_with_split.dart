@@ -268,7 +268,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
 
   @override
   Widget build(BuildContext context) {
-    redLinePosition = MediaQuery.sizeOf(context).width * .38;
+    redLinePosition = MediaQuery.sizeOf(context).width * .35;
 
     if (spriteSheetImage == null || !widget.isVideoInitialized) {
       return Center(child: CircularProgressIndicator());
@@ -306,7 +306,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
               double timeForFrame = ((index - 1) * frameWidth) / totalWidthSum * totalDuration;
 
               return SizedBox(
-                width: 100, // Ensure width matches frame width
+                width: 100,
                 child: Text(
                   "${timeForFrame.toStringAsFixed(2)}s\n|",
                   textAlign: TextAlign.start,
@@ -339,7 +339,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (groupIndex == 0) SizedBox(width: 140), // Left padding
+                        if (groupIndex == 0) SizedBox(width: MediaQuery.sizeOf(context).width * .35), // Left padding
                         Transform.translate(
                           offset: Offset(groupIndex != 0 ? (-groupBinderValue) : 0, 0),
                           child: Trimmer(
@@ -355,12 +355,13 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
                             endTime: timeInfoList[groupIndex]['endTime'],
                             width: timeInfoList[groupIndex]['totalWidth'],
                             totalTimeDuration: timeInfoList[groupIndex]['totalTimeDuration'],
-                            initialSpace: 0.0,
+                            initialSpace: timeInfoList[groupIndex]['initialSpace'],
                             binderValue: groupBinderValue,
                             binderUpdater: groupBinder,
                           ),
                         ),
-                        if (groupIndex == frameGroups.length - 1) SizedBox(width: 180), // Right padding
+                        if (groupIndex == frameGroups.length - 1)
+                          SizedBox(width: MediaQuery.sizeOf(context).width * .45), // Right padding
                       ],
                     ),
                   );
