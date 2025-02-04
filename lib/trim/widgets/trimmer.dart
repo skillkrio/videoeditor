@@ -113,10 +113,11 @@ class _TrimmerState extends State<Trimmer> {
           height: 100,
           width: resizabletotalCanvasWitdh,
           child: Stack(
+            clipBehavior: Clip.none,
             children: [
               //Thumbmail
               Positioned(
-                left: dragHandleWidth + leftStartHandleOffsetX,
+                left: leftStartHandleOffsetX,
                 height: 60,
                 width: resizabletotalCanvasWitdh,
                 child: Container(
@@ -129,8 +130,8 @@ class _TrimmerState extends State<Trimmer> {
                           clipBehavior: Clip.hardEdge,
                           decoration: widget.isHighlighted
                               ? BoxDecoration(
-                                  border: Border.all(
-                                      color: Colors.blue, width: 3),
+                                  border:
+                                      Border.all(color: Colors.blue, width: 3),
                                   borderRadius: BorderRadius.circular(5),
                                 )
                               : BoxDecoration(),
@@ -187,8 +188,9 @@ class _TrimmerState extends State<Trimmer> {
                     onHorizontalDragUpdate: (details) {
                       leftStartHandleOffsetX += details.delta.dx;
                       leftStartHandleOffsetX = leftStartHandleOffsetX.clamp(
-                          0, resizabletotalCanvasWitdh - (dragHandleWidth * 2));
+                          0, resizabletotalCanvasWitdh);
                       // resizabletotalCanvasWitdh -=leftStartHandleOffsetX*0.01;
+                      log(leftStartHandleOffsetX.toString());
                       stateSet(() {});
                     },
                     child: HandleWidget(
