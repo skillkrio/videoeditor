@@ -102,9 +102,9 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
     _videoController.play();
 
     // Cancel the previous timer if it exists
-    _playTimer?.cancel();
 
     if (timeInfos.length > 1) {
+      _playTimer?.cancel();
       _playTimer = Timer(
         Duration(milliseconds: (endTime - startTime).toInt()),
         () {
