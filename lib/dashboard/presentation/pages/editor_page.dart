@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:gudshow/core/painters/video_crop_custom_clipper.dart';
 import 'package:gudshow/crop/crop_screen.dart';
+import 'package:gudshow/dashboard/presentation/pages/widgets/media_controls.dart';
 import 'package:gudshow/split/trimmer_with_split.dart';
 import 'package:video_player/video_player.dart';
 
@@ -28,6 +30,8 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
   List<Map<String, dynamic>> timeInfos = [];
   bool isPlayingSegments = false;
   double aspectRatio = 16 / 9;
+  double lastPlayedInMilliSeconds = 0;
+  Timer? _playTimer;
 
   @override
   void initState() {
@@ -48,22 +52,33 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
       // await _videoController.setLooping(true);
       setState(() {
         _isInitialized = true;
+        _videoController.addListener(_saveLastPosition);
       });
     } catch (e) {
       debugPrint('Error initializing video: $e');
     }
   }
 
-  // void _videoListener() {
-  //   if (_videoController.value.position >=
-  //       Duration(seconds: maxDuration.toInt())) {
-  //     _videoController.pause();
-  //   }
-  // }
+  void groupIndexAndTimeUpdater(
+      int index, double lastPlayedValueInMilliSeconds) {
+    currentSegmentIndex = index;
+
+    lastPlayedInMilliSeconds = lastPlayedValueInMilliSeconds * 1000;
+  }
+
+  void _saveLastPosition() async {
+    if (_videoController.value.isPlaying) {
+      lastPlayedInMilliSeconds =
+          _videoController.value.position.inMilliseconds.toDouble();
+    }
+  }
 
   @override
   void dispose() {
+    _videoController.removeListener(_saveLastPosition);
     _videoController.dispose();
+    lastPlayedInMilliSeconds = 0;
+    _playTimer?.cancel();
     super.dispose();
   }
 
@@ -74,28 +89,41 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
     //! get length here
   }
 
-  void _playSegment(int index) {
+  void _playSegment(int index, {bool ignoreLastPlayedInMilliSeconds = false}) {
     if (index >= timeInfos.length) return; // Stop if all segments are played
-    if (_videoController.value.isPlaying) {
-      _videoController.pause();
-      return;
-    }
 
-    double startTime = timeInfos[index]['startTime'];
-    double endTime = timeInfos[index]['endTime'];
+    double startTime = ignoreLastPlayedInMilliSeconds
+        ? timeInfos[index]['startTime'] * 1000 // Use time in milliseconds
+        : lastPlayedInMilliSeconds;
+    double endTime = timeInfos[index]['endTime'] * 1000;
 
-    _videoController.seekTo(Duration(milliseconds: (startTime * 1000).toInt()));
+    // Seek to start position
+    _videoController.seekTo(Duration(milliseconds: startTime.toInt()));
     _videoController.play();
 
-    Future.delayed(
-        Duration(milliseconds: ((endTime - startTime) * 1000).toInt()), () {
-      _videoController.pause();
-      currentSegmentIndex++;
+    // Cancel the previous timer if it exists
+    _playTimer?.cancel();
 
-      if (currentSegmentIndex < timeInfos.length) {
-        _playSegment(currentSegmentIndex);
-      }
-    });
+    if (timeInfos.length > 1) {
+      _playTimer = Timer(
+        Duration(milliseconds: (endTime - startTime).toInt()),
+        () {
+          // Pause the video after the segment ends
+          _videoController.pause();
+
+          // Move to the next segment
+          currentSegmentIndex++;
+
+          if (currentSegmentIndex < timeInfos.length) {
+            _playSegment(currentSegmentIndex,
+                ignoreLastPlayedInMilliSeconds: true);
+          }
+          setState(() {}); // Trigger rebuild to update UI
+        },
+      );
+    }
+
+    // Update the state immediately to ensure UI reflects current playback state
     setState(() {});
   }
 
@@ -175,7 +203,7 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
                                   child: VideoPlayer(_videoController),
                                 ),
                                 // Custom play/pause overlay
-                                _buildPlayPauseOverlay(),
+                                // _buildPlayPauseOverlay(),
                               ],
                             ),
                           ),
@@ -185,39 +213,37 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
                           : AspectRatio(
                               aspectRatio: aspectRatio,
                               child: Container(
+                                alignment: Alignment.center,
                                 color: Colors.black,
                                 child: Stack(
                                   alignment: Alignment.center,
                                   children: [
                                     FittedBox(
                                       fit: BoxFit.contain,
-                                      child: Transform.translate(
-                                        offset: Offset(
-                                          -_rect!.left,
-                                          -_rect!.top,
-                                        ),
-                                        child: ClipRect(
-                                          clipper: VideoCropper(_rect!),
-                                          child: Container(
-                                            color: Colors.blue,
-                                            height: deviceVideoHeight,
-                                            width: deviceVideoWidth,
-                                            child:
-                                                VideoPlayer(_videoController),
-                                          ),
+                                      child: ClipRect(
+                                        clipper: VideoCropper(_rect!),
+                                        child: Container(
+                                          color: Colors.blue,
+                                          height: deviceVideoHeight,
+                                          width: deviceVideoWidth,
+                                          child: VideoPlayer(_videoController),
                                         ),
                                       ),
                                     ),
-                                    CircleAvatar(
-                                      child: IconButton(
-                                        onPressed: () {
-                                          _playSegment(currentSegmentIndex);
-                                        },
-                                        icon: _videoController.value.isPlaying
-                                            ? Icon(Icons.pause)
-                                            : Icon(Icons.play_arrow),
-                                      ),
-                                    ),
+                                    // CircleAvatar(
+                                    //   child: IconButton(
+                                    //     onPressed: () {
+                                    //       _playSegment(currentSegmentIndex,
+                                    //           ignoreLastPlayedInMilliSeconds:
+                                    //               currentSegmentIndex > 0
+                                    //                   ? true
+                                    //                   : false);
+                                    //     },
+                                    //     icon: _videoController.value.isPlaying
+                                    //         ? Icon(Icons.pause)
+                                    //         : Icon(Icons.play_arrow),
+                                    //   ),
+                                    // ),
                                   ],
                                 ),
                               ),
@@ -244,7 +270,11 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
                     _buildTimeRow(),
 
                     // Media Controls
-                    _buildMediaControls(),
+                    MediaControls(
+                      currentSegmentIndex: currentSegmentIndex,
+                      videoController: _videoController,
+                      playSegment: _playSegment,
+                    ),
 
                     // Bottom Action Buttons
                     _buildActionButtons(),
@@ -258,45 +288,6 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
             ],
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildPlayPauseOverlay() {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (_videoController.value.isPlaying) {
-            _videoController.pause();
-          } else {
-            _playSegment(currentSegmentIndex);
-          }
-        });
-      },
-      child: Container(
-        color: Colors.transparent,
-        child: Center(
-          child: AnimatedOpacity(
-            opacity: _videoController.value.isPlaying ? 0.0 : 1.0,
-            duration: const Duration(milliseconds: 200),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black45,
-                borderRadius: BorderRadius.circular(50),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Icon(
-                  _videoController.value.isPlaying
-                      ? Icons.pause
-                      : Icons.play_arrow,
-                  size: 50,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -332,38 +323,6 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
     final minutes = twoDigits(duration.inMinutes.remainder(60));
     final seconds = twoDigits(duration.inSeconds.remainder(60));
     return '$minutes:$seconds';
-  }
-
-  Widget _buildMediaControls() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.skip_previous, color: Colors.white),
-          iconSize: 32,
-          onPressed: () {},
-        ),
-        IconButton(
-          icon: Icon(
-            _videoController.value.isPlaying ? Icons.pause : Icons.play_arrow,
-            color: Colors.white,
-          ),
-          iconSize: 48,
-          onPressed: () {
-            _playSegment(currentSegmentIndex);
-          },
-        ),
-        IconButton(
-          icon: const Icon(Icons.skip_next, color: Colors.white),
-          iconSize: 32,
-          onPressed: () {},
-        ),
-        IconButton(
-          icon: const Icon(Icons.volume_up, color: Colors.white),
-          onPressed: () {},
-        ),
-      ],
-    );
   }
 
   Widget _buildActionButtons() {
@@ -439,20 +398,15 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
       margin: const EdgeInsets.only(top: 16),
       child: Row(
         children: [
-          FloatingActionButton(
-            heroTag: 'timelineBtn',
-            mini: true,
-            backgroundColor: Colors.white,
-            child: const Icon(Icons.add, color: Colors.black),
-            onPressed: () {},
-          ),
           Expanded(
             child: TrimmerAndSplit(
+              videoPlayerController: _videoController,
               isVideoInitialized: _isInitialized,
               builder: (context, splitMethod) {
                 triggerSplit = splitMethod;
               },
               timeInfoUpdater: timeInfoUpdater,
+              groupIndexAndTimeUpdater: groupIndexAndTimeUpdater,
             ),
           ),
         ],

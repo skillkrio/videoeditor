@@ -5,19 +5,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gudshow/core/utils/time_formatter.dart';
 import 'package:gudshow/trim/widgets/trimmer.dart';
+import 'package:video_player/video_player.dart';
 
 typedef MyBuilder = void Function(
     BuildContext context, void Function() splitMethod);
 
 class TrimmerAndSplit extends StatefulWidget {
-  const TrimmerAndSplit(
-      {super.key,
-      required this.builder,
-      required this.isVideoInitialized,
-      required this.timeInfoUpdater});
+  const TrimmerAndSplit({
+    super.key,
+    required this.builder,
+    required this.isVideoInitialized,
+    required this.timeInfoUpdater,
+    required this.groupIndexAndTimeUpdater,
+    required this.videoPlayerController,
+  });
   final MyBuilder builder;
   final ValueChanged<List<Map<String, dynamic>>> timeInfoUpdater;
+  final Function(int groupIndex, double lastPlayedMillSeconds)
+      groupIndexAndTimeUpdater;
   final bool isVideoInitialized;
+  final VideoPlayerController videoPlayerController;
 
   @override
   State<TrimmerAndSplit> createState() => _TrimmerAndSplitState();
@@ -29,9 +36,10 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
   late List<Rect> initialFrames;
   final int frameWidth = 100;
   final int frameHeight = 60;
-  final double totalDuration = 10.0;
+  final double totalDuration = 84.0;
   double frameDuration = 0.0;
   late int totalFrames;
+  int framesPerSeconds = 2;
   late final ScrollController _scrollController;
   late final ScrollController _timelineScrollController;
   bool _isSyncing = false;
@@ -50,12 +58,8 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
           'https://gudsho-channelstatic.akamaized-staging.net/editor/media_1730714997978/frame_image.jpg');
       setState(() {
         spriteSheetImage = spriteSheet;
-        initialFrames = _generateFrameRects(
-          spriteSheet.width,
-          spriteSheet.height,
-          frameWidth,
-          frameHeight,
-        );
+        initialFrames = generateFrameRects(
+            frameWidth, frameHeight, totalDuration.toInt(), framesPerSeconds);
         totalFrames = initialFrames.length;
         frameDuration = totalDuration / totalFrames;
         frameGroups = [initialFrames];
@@ -90,45 +94,66 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
     }
   }
 
-  List<Rect> _generateFrameRects(
-      int width, int height, int frameWidth, int frameHeight) {
-    final columns = width ~/ frameWidth;
-    final rows = height ~/ frameHeight;
-    final rects = <Rect>[];
+  List<Rect> generateFrameRects(
+      int frameWidth, int frameHeight, int totalSeconds, int fps) {
+    const int framesPerRow = 20; // Given constraint
+    final int totalFrames = totalSeconds * fps;
+    final int totalRows = (totalFrames / framesPerRow).ceil();
 
-    for (int row = 0; row < rows; row++) {
-      for (int col = 0; col < columns; col++) {
-        final rect = Rect.fromLTWH(
+    final List<Rect> rects = [];
+
+    for (int row = 0; row < totalRows; row++) {
+      for (int col = 0; col < framesPerRow; col++) {
+        if (rects.length >= totalFrames)
+          break; // Stop if we reached required frames
+        rects.add(Rect.fromLTWH(
           col * frameWidth.toDouble(),
           row * frameHeight.toDouble(),
           frameWidth.toDouble(),
           frameHeight.toDouble(),
-        );
-        rects.add(rect);
+        ));
       }
     }
+
     return rects;
   }
 
   double calculateWidthFromTime(double time) {
-    double frameWidth = 100.0; // width of one frame in pixels
-    double frameDuration = 0.25; // duration of one frame in seconds
+
+    //!hardcoded
+    double frameDuration = 0.25;
     double width = (time / frameDuration) * frameWidth;
     return width;
   }
 
   void _onScroll() {
     final scrollOffset = _scrollController.offset;
-
     final adjustedScrollOffset = scrollOffset - redLinePosition;
-
     final double redLineExactFrameIndex =
         (adjustedScrollOffset + redLinePosition) / frameWidth;
 
     clampedIndex = redLineExactFrameIndex.floor().clamp(0, totalFrames - 1);
-
     currentTime = redLineExactFrameIndex * frameDuration;
-    setState(() {});
+
+    // Track the group number
+    int currentGroupIndex = -1;
+
+    for (int i = 0; i < timeInfoList.length; i++) {
+      final timeInfo = timeInfoList[i];
+      double groupStartTime = timeInfo['startTime'];
+      double groupEndTime = timeInfo['endTime'];
+
+      if (currentTime >= groupStartTime && currentTime <= groupEndTime) {
+        currentGroupIndex = i;
+        break; // Stop checking once we find the correct group
+      }
+    }
+
+    log("Current Time: $currentTime, Group Index: $currentGroupIndex");
+    widget.groupIndexAndTimeUpdater(currentGroupIndex, currentTime);
+    setState(() {
+      highlightedIndex = currentGroupIndex; // Update UI if needed
+    });
   }
 
   void _splitFrames() {
@@ -253,10 +278,30 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
     _scrollController.addListener(() {
       _syncScroll(_scrollController, _timelineScrollController);
     });
-
     _timelineScrollController.addListener(() {
       _syncScroll(_timelineScrollController, _scrollController);
     });
+    widget.videoPlayerController.addListener(_scrollListView);
+  }
+
+  void _scrollListView() {
+    // Get the video playback position in seconds
+    double position =
+        widget.videoPlayerController.value.position.inSeconds.toDouble();
+
+    // Calculate the total number of frames at the given time (position)
+    double totalFrames = position * framesPerSeconds;
+
+    // Calculate the scroll offset: each frame is 100px
+    double scrollOffset = totalFrames * 100; // 100px per frame
+
+    // Scroll the ListView to the calculated offset
+    if (scrollOffset < _scrollController.position.maxScrollExtent) {
+      _scrollController.jumpTo(scrollOffset);
+    } else {
+      // Ensure it doesn't exceed the max scroll extent
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    }
   }
 
   @override
@@ -331,13 +376,15 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
                 itemBuilder: (context, groupIndex) {
                   return GestureDetector(
                     behavior: HitTestBehavior.translucent,
-                    onTap: () => setState(() {
-                      if (highlightedIndex == groupIndex) {
-                        highlightedIndex = -1;
-                        return;
-                      }
-                      highlightedIndex = groupIndex; // Highlight the group
-                    }),
+                    onTap: () => setState(
+                      () {
+                        if (highlightedIndex == groupIndex) {
+                          highlightedIndex = -1;
+                          return;
+                        }
+                        highlightedIndex = groupIndex; // Highlight the group
+                      },
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

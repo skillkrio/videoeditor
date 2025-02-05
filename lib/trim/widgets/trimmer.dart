@@ -75,26 +75,39 @@ class _TrimmerState extends State<Trimmer> {
     // });
   }
 
-  double calculateTrimmedTime(
-      {required double transformedValue,
-      required double originalWidth,
-      required bool isFromLeftHandle,
-      bool updateCb = false}) {
+  double calculateTrimmedTime({
+    required double transformedValue,
+    required double originalWidth,
+    required bool isFromLeftHandle,
+    bool updateCb = false,
+  }) {
     double newWidth = 0;
-    const double timePerPixel = 0.00025;
+
+    // Compute the correct time per pixel dynamically
+    double totalWidthSum = widget.timeInfoList
+        .fold(0.0, (sum, timeInfo) => sum + timeInfo['totalWidth']);
+    double totalDuration = widget.timeInfoList
+        .fold(0.0, (sum, timeInfo) => sum + timeInfo['totalTimeDuration']);
+
+    double timePerPixel =
+        totalDuration / totalWidthSum; // Dynamic time per pixel
 
     double startTime = transformedValue * timePerPixel;
     if (isFromLeftHandle) {
       newWidth = originalWidth - transformedValue;
     }
 
-    double endTime = originalWidth * timePerPixel;
+    double endTime = (originalWidth + transformedValue) * timePerPixel;
+
+    // Update the modified map
     final modifiedMap = widget.timeInfoList[widget.groupIndex];
     modifiedMap['transformedValue'] = transformedValue;
     modifiedMap['startTime'] = startTime;
     modifiedMap['endTime'] = endTime;
     modifiedMap['totalWidth'] = originalWidth;
+
     if (updateCb) widget.timeFrameUpdater(modifiedMap, widget.groupIndex);
+
     return newWidth;
   }
 
