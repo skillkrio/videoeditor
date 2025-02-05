@@ -8,7 +8,6 @@ class CropGridPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-
     Paint overlayPaint = Paint()..color = Colors.black.withAlpha(10);
     Paint borderPaint = Paint()
       ..color = Colors.white

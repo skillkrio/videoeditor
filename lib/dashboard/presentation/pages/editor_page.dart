@@ -102,9 +102,9 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
     _videoController.play();
 
     // Cancel the previous timer if it exists
-    _playTimer?.cancel();
 
     if (timeInfos.length > 1) {
+      _playTimer?.cancel();
       _playTimer = Timer(
         Duration(milliseconds: (endTime - startTime).toInt()),
         () {
@@ -219,14 +219,18 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
                                   alignment: Alignment.center,
                                   children: [
                                     FittedBox(
+                                      alignment: Alignment.center,
                                       fit: BoxFit.contain,
-                                      child: ClipRect(
-                                        clipper: VideoCropper(_rect!),
-                                        child: Container(
-                                          color: Colors.blue,
-                                          height: deviceVideoHeight,
-                                          width: deviceVideoWidth,
-                                          child: VideoPlayer(_videoController),
+                                      child: Transform.translate(
+                                        offset: Offset(0, 0),
+                                        child: ClipRect(
+                                          clipper: VideoCropper(_rect!),
+                                          child: SizedBox(
+                                            height: deviceVideoHeight,
+                                            width: deviceVideoWidth,
+                                            child:
+                                                VideoPlayer(_videoController),
+                                          ),
                                         ),
                                       ),
                                     ),

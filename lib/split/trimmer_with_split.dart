@@ -119,7 +119,6 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
   }
 
   double calculateWidthFromTime(double time) {
-
     //!hardcoded
     double frameDuration = 0.25;
     double width = (time / frameDuration) * frameWidth;
@@ -296,20 +295,23 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
     double scrollOffset = totalFrames * 100; // 100px per frame
 
     // Scroll the ListView to the calculated offset
-    if (scrollOffset < _scrollController.position.maxScrollExtent) {
+    if (_scrollController.hasClients &&
+        scrollOffset < _scrollController.position.maxScrollExtent) {
       _scrollController.jumpTo(scrollOffset);
     } else {
       // Ensure it doesn't exceed the max scroll extent
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
     }
   }
 
   @override
   void dispose() {
     super.dispose();
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _timelineScrollController.dispose();
-    _scrollController.removeListener(_onScroll);
   }
 
   @override
