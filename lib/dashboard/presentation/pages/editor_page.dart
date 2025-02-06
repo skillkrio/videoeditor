@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:gudshow/core/painters/video_crop_custom_clipper.dart';
 import 'package:gudshow/crop/crop_screen.dart';
 import 'package:gudshow/dashboard/presentation/pages/widgets/media_controls.dart';
 import 'package:gudshow/split/trimmer_with_split.dart';
@@ -215,40 +214,34 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
                               child: Container(
                                 alignment: Alignment.center,
                                 color: Colors.black,
-                                child: Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    FittedBox(
+                                child: InteractiveViewer(
+                                  boundaryMargin: EdgeInsets.all(
+                                      0), // Ensures no unwanted padding
+                                  minScale: 1.0, // Prevents shrinking the video
+                                  maxScale: 5.0, // Allows zooming in
+                                  child: SizedBox(
+                                    width: deviceVideoWidth, // Full video width
+                                    height:
+                                        deviceVideoHeight, // Full video height
+                                    child: Stack(
                                       alignment: Alignment.center,
-                                      fit: BoxFit.contain,
-                                      child: Transform.translate(
-                                        offset: Offset(0, 0),
-                                        child: ClipRect(
-                                          clipper: VideoCropper(_rect!),
-                                          child: SizedBox(
-                                            height: deviceVideoHeight,
-                                            width: deviceVideoWidth,
-                                            child:
-                                                VideoPlayer(_videoController),
+                                      children: [
+                                        VideoPlayer(_videoController),
+                                        Positioned.fromRect(
+                                          rect:
+                                              _rect!, // Use the cropRect values directly
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              border: Border.all(
+                                                  color: Colors.red,
+                                                  width:
+                                                      2), // Just for debugging
+                                            ),
                                           ),
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                    // CircleAvatar(
-                                    //   child: IconButton(
-                                    //     onPressed: () {
-                                    //       _playSegment(currentSegmentIndex,
-                                    //           ignoreLastPlayedInMilliSeconds:
-                                    //               currentSegmentIndex > 0
-                                    //                   ? true
-                                    //                   : false);
-                                    //     },
-                                    //     icon: _videoController.value.isPlaying
-                                    //         ? Icon(Icons.pause)
-                                    //         : Icon(Icons.play_arrow),
-                                    //   ),
-                                    // ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
