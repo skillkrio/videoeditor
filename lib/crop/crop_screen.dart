@@ -7,7 +7,11 @@ import '../core/painters/crop_grid_painter.dart';
 
 class CropScreen extends StatefulWidget {
   final String videoUrl;
-  const CropScreen({super.key, required this.videoUrl});
+  final int playedDurationInMilliSec;
+  const CropScreen(
+      {super.key,
+      required this.videoUrl,
+      required this.playedDurationInMilliSec});
 
   @override
   State<CropScreen> createState() => _CropScreenState();
@@ -21,7 +25,6 @@ class _CropScreenState extends State<CropScreen> {
   double? deviceVideoWidth = 0;
   Rect cropRect = Rect.zero;
   double aspectRatio2 = 1 / 1;
-
   bool isResizing = false;
   bool isDragging = false;
   Offset? dragStartPoint;
@@ -36,6 +39,8 @@ class _CropScreenState extends State<CropScreen> {
       ..initialize().then((_) {
         setState(() {
           isLoading = false;
+          controller
+              .seekTo(Duration(milliseconds: widget.playedDurationInMilliSec));
         });
         Future.delayed(
           Duration(milliseconds: 100),
@@ -80,9 +85,9 @@ class _CropScreenState extends State<CropScreen> {
     });
   }
 
+//Prevent croprect within its boundary and prevent overflow outside boundary
   void _changeAspectRatio(double newRatio) {
     if (!controller.value.isInitialized) return;
-
     setState(() {
       aspectRatio2 = newRatio;
 
@@ -344,6 +349,7 @@ class _CropScreenState extends State<CropScreen> {
                               _startDrag(details.localPosition);
                             },
                             onPanUpdate: (details) {
+                              log("middle container");
                               if (isResizing) {
                                 _updateResize(details.localPosition);
                               } else if (isDragging) {
@@ -377,46 +383,54 @@ class _CropScreenState extends State<CropScreen> {
                                       children: [
                                         Positioned(
                                           left: 0,
-                                          child: _buildHandle('topLeft'),
+                                          child:
+                                              _buildHandle('topLeft', cropRect),
                                         ),
                                         Positioned(
                                           left: deviceVideoWidth! / 3,
-                                          child: _buildHandle('topCenter'),
+                                          child: _buildHandle(
+                                              'topCenter', cropRect),
                                         ),
                                         Positioned(
                                           right: 0,
                                           top: 0,
-                                          child: _buildHandle('topRight'),
+                                          child: _buildHandle(
+                                              'topRight', cropRect),
                                         ),
 // Right edge dots
                                         Positioned(
                                           right: 0,
                                           top: deviceVideoHeight! / 3,
-                                          child: _buildHandle('rightCenter'),
+                                          child: _buildHandle(
+                                              'rightCenter', cropRect),
                                         ),
 // Left edge dots
                                         Positioned(
                                           left: 0,
                                           top: deviceVideoHeight! / 3,
-                                          child: _buildHandle('leftCenter'),
+                                          child: _buildHandle(
+                                              'leftCenter', cropRect),
                                         ),
 // Bottom edge dots
                                         Positioned(
                                           left: 0,
                                           bottom: 0,
-                                          child: _buildHandle('bottomLeft'),
+                                          child: _buildHandle(
+                                              'bottomLeft', cropRect),
                                         ),
                                         Positioned(
                                           bottom: 0,
                                           top: deviceVideoHeight! -
                                               (deviceVideoHeight! / 3),
                                           left: deviceVideoWidth! / 3,
-                                          child: _buildHandle('bottomCenter'),
+                                          child: _buildHandle(
+                                              'bottomCenter', cropRect),
                                         ),
                                         Positioned(
                                           right: 0,
                                           bottom: 0,
-                                          child: _buildHandle('bottomRight'),
+                                          child: _buildHandle(
+                                              'bottomRight', cropRect),
                                         ),
                                       ],
                                     ),
@@ -468,7 +482,7 @@ class _CropScreenState extends State<CropScreen> {
     );
   }
 
-  Widget _buildHandle(String handle) {
+  Widget _buildHandle(String handle, Rect rect) {
     log('buildhandle calling here ');
     return GestureDetector(
       onPanStart: (details) {
@@ -476,17 +490,17 @@ class _CropScreenState extends State<CropScreen> {
         _startResize(details.localPosition, handle);
       },
       onPanUpdate: (details) {
+        log(details.delta.dx.toString());
         _updateResize(details.localPosition);
       },
       onPanEnd: (details) {
         _endResize();
       },
       child: Container(
-        width: deviceVideoWidth! / 3,
-        height: deviceVideoHeight! / 3,
+        width: rect.width / 3,
+        height: rect.height / 3,
         decoration: BoxDecoration(
           shape: BoxShape.rectangle,
-          color: Colors.transparent,
         ),
       ),
     );

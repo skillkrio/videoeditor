@@ -36,7 +36,8 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
   late List<Rect> initialFrames;
   final int frameWidth = 100;
   final int frameHeight = 60;
-  final double totalDuration = 3.0;
+  //! maximum of 84 second is allowed for this thumbnail
+  final double totalDuration = 10.0;
   double frameDuration = 0.0;
   late int totalFrames;
   int framesPerSeconds = 2;
@@ -131,7 +132,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
   }
 
   double calculateWidthFromTime(double time) {
-    //!hardcoded
+    //!hardcoded for now later zoom in/out will show N number of frames per sec based on zoom level
     double frameDuration = 0.50;
     double width = (time / frameDuration) * frameWidth;
     return width;
@@ -304,8 +305,6 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
     _timelineScrollController.addListener(() {
       _syncScroll(_timelineScrollController, _scrollController);
     });
-    //! FIXME VIDEO
-    // widget.videoPlayerController.addListener(_scrollListView);
   }
 
   void _scrollListView() {
@@ -408,41 +407,28 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
                       children: [
                         if (groupIndex == 0)
                           SizedBox(width: MediaQuery.sizeOf(context).width / 2),
-                        Transform.translate(
-                          offset: Offset(
-                            canUseLeftBinderInfo
-                                ? groupBinderInfo[groupIndex] != null
-                                    ? -groupBinderInfo[groupIndex]!
-                                    : 0
-                                : groupIndex < (highlightedIndex ?? 0)
-                                    ? groupBinderInfo[groupIndex]??-lastLeftMovedOffsetPos
-                                    : -lastLeftMovedOffsetPos,
-                            0,
-                          ),
-                          child: Trimmer(
-                            recompute: recompute,
-                            totalFrameWidth: totalFrameWidth,
-                            timeFrameUpdater: timeFrameUpdate,
-                            groupIndex: groupIndex,
-                            transformedValue: timeInfoList[groupIndex]
-                                    ['transformedValue'] ??
-                                0,
-                            spriteSheetImage: spriteSheetImage!,
-                            frameRects: initialFrames,
-                            timeInfoList: timeInfoList,
-                            isHighlighted: highlightedIndex == groupIndex,
-                            totalFrames: timeInfoList[groupIndex]
-                                ['totalFrames'],
-                            startTime: timeInfoList[groupIndex]['startTime'],
-                            endTime: timeInfoList[groupIndex]['endTime'],
-                            width: timeInfoList[groupIndex]['totalWidth'],
-                            totalTimeDuration: timeInfoList[groupIndex]
-                                ['totalTimeDuration'],
-                            initialSpace: timeInfoList[groupIndex]
-                                ['initialSpace'],
-                            binderValue: groupBinderValue,
-                            binderUpdater: groupBinder,
-                          ),
+                        //Trim Feature Widget
+                        Trimmer(
+                          recompute: recompute,
+                          totalFrameWidth: totalFrameWidth,
+                          timeFrameUpdater: timeFrameUpdate,
+                          groupIndex: groupIndex,
+                          transformedValue:
+                              timeInfoList[groupIndex]['transformedValue'] ?? 0,
+                          spriteSheetImage: spriteSheetImage!,
+                          frameRects: initialFrames,
+                          timeInfoList: timeInfoList,
+                          isHighlighted: highlightedIndex == groupIndex,
+                          totalFrames: timeInfoList[groupIndex]['totalFrames'],
+                          startTime: timeInfoList[groupIndex]['startTime'],
+                          endTime: timeInfoList[groupIndex]['endTime'],
+                          width: timeInfoList[groupIndex]['totalWidth'],
+                          totalTimeDuration: timeInfoList[groupIndex]
+                              ['totalTimeDuration'],
+                          initialSpace: timeInfoList[groupIndex]
+                              ['initialSpace'],
+                          binderValue: groupBinderValue,
+                          binderUpdater: groupBinder,
                         ),
                         if (groupIndex == frameGroups.length - 1)
                           SizedBox(width: rightPadding),

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:gudshow/core/utils/helper.dart';
 import 'package:gudshow/crop/crop_screen.dart';
 import 'package:gudshow/dashboard/presentation/pages/widgets/media_controls.dart';
 import 'package:gudshow/split/trimmer_with_split.dart';
@@ -135,7 +136,7 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.deepPurple.withOpacity(0.3),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -212,36 +213,35 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
                           : AspectRatio(
                               aspectRatio: aspectRatio,
                               child: Container(
-                                alignment: Alignment.center,
                                 color: Colors.black,
-                                child: InteractiveViewer(
-                                  boundaryMargin: EdgeInsets.all(
-                                      0), // Ensures no unwanted padding
-                                  minScale: 1.0, // Prevents shrinking the video
-                                  maxScale: 5.0, // Allows zooming in
-                                  child: SizedBox(
-                                    width: deviceVideoWidth, // Full video width
-                                    height:
-                                        deviceVideoHeight, // Full video height
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        VideoPlayer(_videoController),
-                                        Positioned.fromRect(
-                                          rect:
-                                              _rect!, // Use the cropRect values directly
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              border: Border.all(
-                                                  color: Colors.red,
-                                                  width:
-                                                      2), // Just for debugging
-                                            ),
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    FittedBox(
+                                      fit: BoxFit.cover,
+                                      child: ClipRect(
+                                        child: Align(
+                                          alignment:
+                                              HelperUtils.getVideoAlignment(
+                                                  _rect!,
+                                                  _videoController.value.size),
+                                          widthFactor: _rect!.width /
+                                              _videoController.value.size.width,
+                                          heightFactor: _rect!.height /
+                                              _videoController
+                                                  .value.size.height,
+                                          child: SizedBox(
+                                            width: _videoController
+                                                .value.size.width,
+                                            height: _videoController
+                                                .value.size.height,
+                                            child:
+                                                VideoPlayer(_videoController),
                                           ),
                                         ),
-                                      ],
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -332,7 +332,11 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
             'Crop',
             onPressed: () async {
               final result = await Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => CropScreen(videoUrl: videoUrl),
+                builder: (context) => CropScreen(
+                  videoUrl: videoUrl,
+                  playedDurationInMilliSec:
+                      _videoController.value.position.inMilliseconds,
+                ),
               ));
               if (result != null) {
                 Rect cropRect = result['rect'];

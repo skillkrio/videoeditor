@@ -199,18 +199,15 @@ class _TrimmerState extends State<Trimmer> {
                   left: leftStartHandleOffsetX,
                   child: GestureDetector(
                     onHorizontalDragEnd: (details) {
-                      //!TODO CALCULATE PROPERLY
-                      // calculateTrimmedTime(
-                      //     updateCb: true,
-                      //     isFromLeftHandle: true,
-                      //     resizedWidth: resizabletotalCanvasWitdh,
-                      //     totalWidth: widget.totalFrameWidth,
-                      //     transformedValue: leftStartHandleOffsetX);
-                      widget.binderUpdater(
-                          0, widget.groupIndex, leftStartHandleOffsetX, true);
-                      // widget.recompute(
-                      //     groupIndex: widget.groupIndex,
-                      //     movedLeftOffset: leftStartHandleOffsetX);
+                      calculateTrimmedTime(
+                          updateCb: true,
+                          isFromLeftHandle: true,
+                          resizedWidth: resizabletotalCanvasWitdh,
+                          totalWidth: widget.totalFrameWidth,
+                          transformedValue: leftStartHandleOffsetX);
+                      widget.recompute(
+                          groupIndex: widget.groupIndex,
+                          movedLeftOffset: leftStartHandleOffsetX);
                       stateSet(
                         () {},
                       );
@@ -256,7 +253,6 @@ class _TrimmerState extends State<Trimmer> {
                           updateCb: true,
                           isFromLeftHandle: false,
                           transformedValue: leftStartHandleOffsetX);
-                      // widget.recompute();
                     },
                     onHorizontalDragUpdate: (details) {
                       final double dx = details.delta.dx;
@@ -270,7 +266,6 @@ class _TrimmerState extends State<Trimmer> {
                       resizabletotalCanvasWitdh = double.parse(newWidth
                           .clamp(minWidth, maxWidth)
                           .toStringAsFixed(2));
-                      log(resizabletotalCanvasWitdh.toString() + "right width");
                       stateSet(() {}); // Update UI
                     },
                     child: HandleWidget(
