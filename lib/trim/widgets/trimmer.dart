@@ -18,9 +18,8 @@ class Trimmer extends StatefulWidget {
   final double transformedValue;
   final int groupIndex;
   final Function(Map<String, dynamic> info, int index) timeFrameUpdater;
-  final Function(
-          double binderValue, int lastGroupIndex, double lastMovedLeftOffset)
-      binderUpdater;
+  final Function(double binderValue, int lastGroupIndex,
+      double lastMovedLeftOffset, bool canUseBinderVal) binderUpdater;
   final double binderValue;
   final double totalFrameWidth;
   final Function({required int groupIndex, required double movedLeftOffset})
@@ -133,8 +132,7 @@ class _TrimmerState extends State<Trimmer> {
 
       return StatefulBuilder(builder: (context, stateSet) {
         return Container(
-          margin: EdgeInsets.only(right: 5),
-          color: Colors.deepPurple.withOpacity(0.5),
+          // color: Colors.deepPurple.withOpacity(0.5),
           height: 100,
           width: widget.isHighlighted
               ? resizabletotalCanvasWitdh + dragHandleWidth
@@ -209,7 +207,7 @@ class _TrimmerState extends State<Trimmer> {
                       //     totalWidth: widget.totalFrameWidth,
                       //     transformedValue: leftStartHandleOffsetX);
                       widget.binderUpdater(
-                          0, widget.groupIndex, leftStartHandleOffsetX);
+                          0, widget.groupIndex, leftStartHandleOffsetX, true);
                       // widget.recompute(
                       //     groupIndex: widget.groupIndex,
                       //     movedLeftOffset: leftStartHandleOffsetX);
@@ -222,7 +220,7 @@ class _TrimmerState extends State<Trimmer> {
                       leftStartHandleOffsetX = leftStartHandleOffsetX.clamp(
                           0, resizabletotalCanvasWitdh);
                       widget.binderUpdater(
-                          leftStartHandleOffsetX, widget.groupIndex, 0);
+                          leftStartHandleOffsetX, widget.groupIndex, 0, true);
                       resizabletotalCanvasWitdh =
                           resizabletotalCanvasWitdh - details.delta.dx;
                       final double minWidth =

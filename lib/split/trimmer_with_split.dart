@@ -36,7 +36,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
   late List<Rect> initialFrames;
   final int frameWidth = 100;
   final int frameHeight = 60;
-  final double totalDuration = 1.0;
+  final double totalDuration = 3.0;
   double frameDuration = 0.0;
   late int totalFrames;
   int framesPerSeconds = 2;
@@ -54,6 +54,8 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
   double totalFrameWidth = 0;
   int lastMovedGroupIndex = -1;
   double lastLeftMovedOffsetPos = 0;
+  bool canUseLeftBinderInfo = false;
+  Map<int, double> groupBinderInfo = {};
   void recompute({required int groupIndex, required double movedLeftOffset}) {
     // if (_scrollController.hasClients) {
     //   _scrollController.animateTo(0,
@@ -264,12 +266,14 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
     log(timeInfoList.toString());
   }
 
-  void groupBinder(
-      double value, int lastGroupIndex, double lastMovedLeftOffsetPos) {
+  void groupBinder(double value, int lastGroupIndex,
+      double lastMovedLeftOffsetPos, bool canUseBinderVal) {
     setState(() {
       lastGroupIndex = lastGroupIndex;
       lastLeftMovedOffsetPos = lastMovedLeftOffsetPos;
+      canUseLeftBinderInfo = canUseBinderVal;
       groupBinderValue = value;
+      groupBinderInfo[lastGroupIndex] = lastMovedLeftOffsetPos;
       log("binder ----$groupBinderValue");
     });
   }
@@ -392,6 +396,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
                     behavior: HitTestBehavior.translucent,
                     onTap: () => setState(
                       () {
+                        canUseLeftBinderInfo = true;
                         if (highlightedIndex == groupIndex) {
                           highlightedIndex = -1;
                           return;
@@ -405,9 +410,13 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
                           SizedBox(width: MediaQuery.sizeOf(context).width / 2),
                         Transform.translate(
                           offset: Offset(
-                            groupIndex < (highlightedIndex ?? 0)
-                                ? groupBinderValue
-                                : -lastLeftMovedOffsetPos,
+                            canUseLeftBinderInfo
+                                ? groupBinderInfo[groupIndex] != null
+                                    ? -groupBinderInfo[groupIndex]!
+                                    : 0
+                                : groupIndex < (highlightedIndex ?? 0)
+                                    ? groupBinderInfo[groupIndex]??-lastLeftMovedOffsetPos
+                                    : -lastLeftMovedOffsetPos,
                             0,
                           ),
                           child: Trimmer(
