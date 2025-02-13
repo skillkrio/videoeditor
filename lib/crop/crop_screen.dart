@@ -135,30 +135,46 @@ class _CropScreenState extends State<CropScreen> {
   }
 
   void _updateDrag(Offset newPosition) {
+    // Prevent null errors
+    if (dragStartPoint == null ||
+        initialRect == null ||
+        deviceVideoWidth == null ||
+        deviceVideoHeight == null) {
+      return;
+    }
+
     // Calculate the delta of the drag movement
     double dx = newPosition.dx - dragStartPoint!.dx;
     double dy = newPosition.dy - dragStartPoint!.dy;
 
-    // Update the position of the crop rectangle
+    // Calculate new crop rectangle position
     double newLeft = initialRect!.left + dx;
     double newTop = initialRect!.top + dy;
     double newRight = initialRect!.right + dx;
     double newBottom = initialRect!.bottom + dy;
 
-    // Clamp the position of the crop rectangle within the video boundaries
+    // Define boundaries
     double minLeft = 0.0;
     double minTop = 0.0;
-    double maxRight = deviceVideoWidth! -
-        cropRect.width; // Assuming videoWidth is the video width
-    double maxBottom = deviceVideoHeight! -
-        cropRect.height; // Assuming videoHeight is the video height
+    double maxRight = deviceVideoWidth! - cropRect.width;
+    double maxBottom = deviceVideoHeight! - cropRect.height;
 
+    // Clamp the crop area within boundaries (without resizing)
     newLeft = newLeft.clamp(minLeft, maxRight);
     newTop = newTop.clamp(minTop, maxBottom);
-    newRight =
-        newRight.clamp(minLeft + cropRect.width, maxRight + cropRect.width);
-    newBottom =
-        newBottom.clamp(minTop + cropRect.height, maxBottom + cropRect.height);
+    newRight = newLeft + cropRect.width; // Maintain width
+    newBottom = newTop + cropRect.height; // Maintain height
+
+    // Prevent snapping or unintended resizing
+    if (newBottom > maxBottom) {
+      newBottom = maxBottom;
+      newTop = newBottom - cropRect.height;
+    }
+
+    if (newRight > maxRight) {
+      newRight = maxRight;
+      newLeft = newRight - cropRect.width;
+    }
 
     // Update the crop rectangle position
     setState(() {
@@ -197,8 +213,8 @@ class _CropScreenState extends State<CropScreen> {
       switch (activeHandle) {
         case 'topLeft':
           cropRect = Rect.fromLTRB(
-            initialRect!.left + dx,
-            initialRect!.top + dy,
+            (initialRect!.left + dx).clamp(0, initialRect!.right - 50),
+            (initialRect!.top + dy).clamp(0, initialRect!.bottom - 50),
             initialRect!.right,
             initialRect!.bottom,
           );
@@ -206,7 +222,7 @@ class _CropScreenState extends State<CropScreen> {
         case 'topCenter':
           cropRect = Rect.fromLTRB(
             initialRect!.left,
-            initialRect!.top + dy,
+            (initialRect!.top + dy).clamp(0, initialRect!.bottom - 50),
             initialRect!.right,
             initialRect!.bottom,
           );
@@ -214,8 +230,9 @@ class _CropScreenState extends State<CropScreen> {
         case 'topRight':
           cropRect = Rect.fromLTRB(
             initialRect!.left,
-            initialRect!.top + dy,
-            initialRect!.right + dx,
+            (initialRect!.top + dy).clamp(0, initialRect!.bottom - 50),
+            (initialRect!.right + dx)
+                .clamp(initialRect!.left + 50, deviceVideoWidth!),
             initialRect!.bottom,
           );
           break;
@@ -223,7 +240,8 @@ class _CropScreenState extends State<CropScreen> {
           cropRect = Rect.fromLTRB(
             initialRect!.left,
             initialRect!.top,
-            initialRect!.right + dx,
+            (initialRect!.right + dx)
+                .clamp(initialRect!.left + 50, deviceVideoWidth!),
             initialRect!.bottom,
           );
           break;
@@ -231,8 +249,10 @@ class _CropScreenState extends State<CropScreen> {
           cropRect = Rect.fromLTRB(
             initialRect!.left,
             initialRect!.top,
-            initialRect!.right + dx,
-            initialRect!.bottom + dy,
+            (initialRect!.right + dx)
+                .clamp(initialRect!.left + 50, deviceVideoWidth!),
+            (initialRect!.bottom + dy)
+                .clamp(initialRect!.top + 50, deviceVideoHeight!),
           );
           break;
         case 'bottomCenter':
@@ -240,20 +260,22 @@ class _CropScreenState extends State<CropScreen> {
             initialRect!.left,
             initialRect!.top,
             initialRect!.right,
-            initialRect!.bottom + dy,
+            (initialRect!.bottom + dy)
+                .clamp(initialRect!.top + 50, deviceVideoHeight!),
           );
           break;
         case 'bottomLeft':
           cropRect = Rect.fromLTRB(
-            initialRect!.left + dx,
+            (initialRect!.left + dx).clamp(0, initialRect!.right - 50),
             initialRect!.top,
             initialRect!.right,
-            initialRect!.bottom + dy,
+            (initialRect!.bottom + dy)
+                .clamp(initialRect!.top + 50, deviceVideoHeight!),
           );
           break;
         case 'leftCenter':
           cropRect = Rect.fromLTRB(
-            initialRect!.left + dx,
+            (initialRect!.left + dx).clamp(0, initialRect!.right - 50),
             initialRect!.top,
             initialRect!.right,
             initialRect!.bottom,
@@ -261,43 +283,12 @@ class _CropScreenState extends State<CropScreen> {
           break;
       }
 
-      // Ensuring the crop rect stays within the boundaries
-      if (cropRect.width < 50) {
-        log('first one acting');
-        cropRect =
-            Rect.fromLTWH(cropRect.left, cropRect.top, 50, cropRect.height);
-      }
-      if (cropRect.height < 50) {
-        log('Second one acting');
-
-        cropRect =
-            Rect.fromLTWH(cropRect.left, cropRect.top, cropRect.width, 50);
-      }
-
-      if (cropRect.left < 0) {
-        log('third one acting');
-
-        cropRect =
-            Rect.fromLTWH(0, cropRect.top, cropRect.width, cropRect.height);
-      }
-      if (cropRect.top < 0) {
-        log('fourth one acting');
-
-        cropRect =
-            Rect.fromLTWH(cropRect.left, 0, cropRect.width, cropRect.height);
-      }
-      if (cropRect.right > deviceVideoWidth!) {
-        log('5th one acting');
-
-        cropRect = Rect.fromLTWH(cropRect.left, cropRect.top,
-            deviceVideoWidth! - cropRect.left, cropRect.height);
-      }
-      if (cropRect.bottom > deviceVideoHeight!) {
-        log('Sixth one acting');
-
-        cropRect = Rect.fromLTWH(cropRect.left, cropRect.top, cropRect.width,
-            deviceVideoHeight! - cropRect.top);
-      }
+      // Ensure the crop rect stays within the boundaries
+      cropRect = Rect.fromLTRB(
+          cropRect.left,
+          cropRect.top,
+          cropRect.right.clamp(cropRect.left + 50, deviceVideoWidth!),
+          cropRect.bottom.clamp(cropRect.top + 50, deviceVideoHeight!));
     });
   }
 
