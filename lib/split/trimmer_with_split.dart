@@ -37,7 +37,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
   final int frameWidth = 100;
   final int frameHeight = 60;
   //! maximum of 84 second is allowed for this thumbnail
-  final double totalDuration = 10.0;
+  final double totalDuration = 2;
   double frameDuration = 0.0;
   late int totalFrames;
   int framesPerSeconds = 2;
@@ -81,10 +81,11 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
           'startTime': 0.0,
           'endTime': 0.0 + initialFrames.length * frameDuration,
           'totalWidth': initialFrames.length * frameWidth.toDouble(),
+          'newTotalWidth': initialFrames.length * frameWidth.toDouble(),
           'totalTimeDuration': totalDuration,
           'totalFrames': initialFrames.length,
           'initialSpace': 0.0,
-          'transformedValue': 0.0
+          'transformedValue': 0.0,
         });
         totalFrameWidth = calculateWidthFromTime(totalDuration);
         widget.timeInfoUpdater(timeInfoList);
@@ -224,6 +225,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
           'startTime': firstPartStart,
           'endTime': firstPartEnd,
           'totalWidth': firstPartWidth,
+          'newTotalWidth': firstPartWidth,
           'totalTimeDuration': totalDuration,
           'totalFrames': firstPart.length,
           'initialSpace': calculateWidthFromTime(firstPartStart),
@@ -235,6 +237,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
           'startTime': secondPartStart,
           'endTime': secondPartEnd,
           'totalWidth': secondPartWidth,
+          'newTotalWidth': secondPartWidth,
           'totalTimeDuration': totalDuration,
           'totalFrames': secondPart.length,
           'initialSpace': calculateWidthFromTime(secondPartStart),
@@ -264,18 +267,15 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
 
   void timeFrameUpdate(Map<String, dynamic> info, int index) {
     timeInfoList[index] = info;
-    log(timeInfoList.toString());
+    // log(timeInfoList.toString());
   }
 
-  void groupBinder(double value, int lastGroupIndex,
-      double lastMovedLeftOffsetPos, bool canUseBinderVal) {
+  void parentRepositioner(
+      {required binderValue,
+      required isSaveDidUpdateWidget,
+      required lastGroupIndex}) {
     setState(() {
-      lastGroupIndex = lastGroupIndex;
-      lastLeftMovedOffsetPos = lastMovedLeftOffsetPos;
-      canUseLeftBinderInfo = canUseBinderVal;
-      groupBinderValue = value;
-      groupBinderInfo[lastGroupIndex] = lastMovedLeftOffsetPos;
-      log("binder ----$groupBinderValue");
+      groupBinderValue = binderValue;
     });
   }
 
@@ -382,60 +382,69 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
             clipBehavior: Clip.none,
             children: [
               // Scrollable Frame List
-              ListView.builder(
-                controller: _scrollController,
-                itemCount: timeInfoList.length,
-                scrollDirection: Axis.horizontal,
-                itemBuilder: (context, groupIndex) {
-                  double rightPadding = MediaQuery.of(context).size.width / 2 -
-                      (totalFrameWidth % 100);
+              Transform.translate(
+                offset: Offset(groupBinderValue, 0),
+                child: ListView.builder(
+                  controller: _scrollController,
+                  itemCount: timeInfoList.length,
+                  scrollDirection: Axis.horizontal,
+                  itemBuilder: (context, groupIndex) {
+                    double rightPadding =
+                        MediaQuery.of(context).size.width / 2 -
+                            (totalFrameWidth % 100);
 
-                  rightPadding = rightPadding < 0 ? 0 : rightPadding;
-                  return GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: () => setState(
-                      () {
-                        canUseLeftBinderInfo = true;
-                        if (highlightedIndex == groupIndex) {
-                          highlightedIndex = -1;
-                          return;
-                        }
-                        highlightedIndex = groupIndex; // Highlight the group
-                      },
-                    ),
-                    child: Row(
-                      children: [
-                        if (groupIndex == 0)
-                          SizedBox(width: MediaQuery.sizeOf(context).width / 2),
-                        //Trim Feature Widget
-                        Trimmer(
-                          recompute: recompute,
-                          totalFrameWidth: totalFrameWidth,
-                          timeFrameUpdater: timeFrameUpdate,
-                          groupIndex: groupIndex,
-                          transformedValue:
-                              timeInfoList[groupIndex]['transformedValue'] ?? 0,
-                          spriteSheetImage: spriteSheetImage!,
-                          frameRects: initialFrames,
-                          timeInfoList: timeInfoList,
-                          isHighlighted: highlightedIndex == groupIndex,
-                          totalFrames: timeInfoList[groupIndex]['totalFrames'],
-                          startTime: timeInfoList[groupIndex]['startTime'],
-                          endTime: timeInfoList[groupIndex]['endTime'],
-                          width: timeInfoList[groupIndex]['totalWidth'],
-                          totalTimeDuration: timeInfoList[groupIndex]
-                              ['totalTimeDuration'],
-                          initialSpace: timeInfoList[groupIndex]
-                              ['initialSpace'],
-                          binderValue: groupBinderValue,
-                          binderUpdater: groupBinder,
-                        ),
-                        if (groupIndex == frameGroups.length - 1)
-                          SizedBox(width: rightPadding),
-                      ],
-                    ),
-                  );
-                },
+                    rightPadding = rightPadding < 0 ? 0 : rightPadding;
+                    return GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: () => setState(
+                        () {
+                          canUseLeftBinderInfo = true;
+                          if (highlightedIndex == groupIndex) {
+                            highlightedIndex = -1;
+                            return;
+                          }
+                          highlightedIndex = groupIndex; // Highlight the group
+                        },
+                      ),
+                      child: Row(
+                        children: [
+                          if (groupIndex == 0)
+                            SizedBox(
+                                width: MediaQuery.sizeOf(context).width / 2),
+                          //Trim Feature Widget
+                          Trimmer(
+                            newTotalWidth: timeInfoList[groupIndex]
+                                ['newTotalWidth'],
+                            recompute: recompute,
+                            totalFrameWidth: totalFrameWidth,
+                            timeFrameUpdater: timeFrameUpdate,
+                            groupIndex: groupIndex,
+                            transformedValue: timeInfoList[groupIndex]
+                                    ['transformedValue'] ??
+                                0,
+                            spriteSheetImage: spriteSheetImage!,
+                            frameRects: initialFrames,
+                            timeInfoList: timeInfoList,
+                            isHighlighted: highlightedIndex == groupIndex,
+                            totalFrames: timeInfoList[groupIndex]
+                                ['totalFrames'],
+                            startTime: timeInfoList[groupIndex]['startTime'],
+                            endTime: timeInfoList[groupIndex]['endTime'],
+                            width: timeInfoList[groupIndex]['totalWidth'],
+                            totalTimeDuration: timeInfoList[groupIndex]
+                                ['totalTimeDuration'],
+                            initialSpace: timeInfoList[groupIndex]
+                                ['initialSpace'],
+                            binderValue: groupBinderValue,
+                            parentRepositioner: parentRepositioner,
+                          ),
+                          if (groupIndex == frameGroups.length - 1)
+                            SizedBox(width: rightPadding),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
 
               // White Tracking Line

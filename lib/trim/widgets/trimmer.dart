@@ -18,12 +18,15 @@ class Trimmer extends StatefulWidget {
   final double transformedValue;
   final int groupIndex;
   final Function(Map<String, dynamic> info, int index) timeFrameUpdater;
-  final Function(double binderValue, int lastGroupIndex,
-      double lastMovedLeftOffset, bool canUseBinderVal) binderUpdater;
+  final void Function(
+      {required double binderValue,
+      required int lastGroupIndex,
+      required bool isSaveDidUpdateWidget}) parentRepositioner;
   final double binderValue;
   final double totalFrameWidth;
-  final Function({required int groupIndex, required double movedLeftOffset})
-      recompute;
+  final double newTotalWidth;
+  final void Function(
+      {required int groupIndex, required double movedLeftOffset}) recompute;
 
   const Trimmer({
     super.key,
@@ -41,9 +44,10 @@ class Trimmer extends StatefulWidget {
     required this.groupIndex,
     required this.timeFrameUpdater,
     required this.binderValue,
-    required this.binderUpdater,
+    required this.parentRepositioner,
     required this.totalFrameWidth,
     required this.recompute,
+    required this.newTotalWidth,
   });
 
   @override
@@ -53,19 +57,17 @@ class Trimmer extends StatefulWidget {
 class _TrimmerState extends State<Trimmer> {
   late final ScrollController _scrollController;
   double leftStartHandleOffsetX = 0;
-  double rightEndHandleOffsetX = 0;
-  double bindingValue = 0;
   double leftInitialTranslation = 0;
+  double resizabletotalCanvasWitdh = 0;
+  double totalFrameWidthForLeftDragHandle = 0;
+  bool canUpdateTotalFrameWidthForLeftDragHandle = false;
   @override
   void initState() {
     super.initState();
-    // leftStartHandleOffsetX = widget.transformedValue;
-    log('init called ${widget.width}');
+    resizabletotalCanvasWitdh = widget.newTotalWidth;
+    totalFrameWidthForLeftDragHandle = widget.newTotalWidth;
     _scrollController = ScrollController();
     leftInitialTranslation = widget.initialSpace;
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   _scrollController.position.jumpTo(widget.initialSpace);
-    // });
   }
 
   @override
@@ -77,7 +79,11 @@ class _TrimmerState extends State<Trimmer> {
   @override
   void didUpdateWidget(Trimmer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    bindingValue = widget.binderValue;
+    resizabletotalCanvasWitdh = widget.newTotalWidth;
+    if (canUpdateTotalFrameWidthForLeftDragHandle) {
+      totalFrameWidthForLeftDragHandle = widget.newTotalWidth;
+      canUpdateTotalFrameWidthForLeftDragHandle = false;
+    }
   }
 
   double calculateTrimmedTime({
@@ -89,22 +95,32 @@ class _TrimmerState extends State<Trimmer> {
   }) {
     double timePerPixel = 0.005; // Adjusted time per pixel
     double startTime;
+    double endTime;
     double newWidth;
 
     if (isFromLeftHandle) {
       // If trimming from the left, adjust start time based on transformed value
       startTime =
           (transformedValue * timePerPixel).clamp(0, widget.totalTimeDuration);
-      newWidth = (totalWidth - transformedValue - (totalWidth - resizedWidth))
-          .clamp(0, totalWidth); // Ensure valid width
-    } else {
-      // If trimming from the right, keep start time the same
-      startTime = 0.0;
-      newWidth = resizedWidth; // Width directly provided
-    }
 
-    double endTime = (startTime + newWidth * timePerPixel)
-        .clamp(0, widget.totalTimeDuration); // Ensure valid end time
+      // Width should NOT be reduced when trimming from the left
+      newWidth = resizedWidth;
+
+      // Calculate endTime correctly (without reducing width)
+      endTime = ((resizedWidth + transformedValue) * timePerPixel)
+          .clamp(0, widget.totalTimeDuration);
+    } else {
+      // If trimming from the right, startTime remains the same
+      startTime =
+          (transformedValue * timePerPixel).clamp(0, widget.totalTimeDuration);
+
+      // Width directly provided for right handle
+      newWidth = resizedWidth;
+
+      // Calculate endTime based on the new width
+      endTime = (startTime + newWidth * timePerPixel)
+          .clamp(0, widget.totalTimeDuration);
+    }
 
     // Update the modified map
     final modifiedMap = widget.timeInfoList[widget.groupIndex];
@@ -112,9 +128,9 @@ class _TrimmerState extends State<Trimmer> {
         transformedValue.abs(); // Use positive value
     modifiedMap['startTime'] = startTime;
     modifiedMap['endTime'] = endTime;
-    modifiedMap['totalWidth'] = newWidth;
-    modifiedMap['initialSpace'] =
-        -leftInitialTranslation - leftStartHandleOffsetX;
+    modifiedMap['newTotalWidth'] = newWidth;
+    // modifiedMap['totalWidth'] = widget.totalFrameWidth;
+    modifiedMap['initialSpace'] = transformedValue;
 
     log(modifiedMap.toString());
 
@@ -126,7 +142,6 @@ class _TrimmerState extends State<Trimmer> {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
-      double resizabletotalCanvasWitdh = widget.width;
       double dragHandleWidth = 15;
       double dragHandleHeight = 60;
 
@@ -134,24 +149,21 @@ class _TrimmerState extends State<Trimmer> {
         return Container(
           // color: Colors.deepPurple.withOpacity(0.5),
           height: 100,
-          width: widget.isHighlighted
-              ? resizabletotalCanvasWitdh + dragHandleWidth
-              : resizabletotalCanvasWitdh,
+          width: resizabletotalCanvasWitdh,
           transform: Matrix4.translationValues(0, 0, 0),
           child: Stack(
             clipBehavior: Clip.hardEdge,
             children: [
               //Thumbmail
               Positioned(
-                left: widget.isHighlighted ? dragHandleWidth : 0,
+                left: 0,
                 height: 60,
                 child: Container(
                   constraints: BoxConstraints(minWidth: 0),
                   clipBehavior: Clip.hardEdge,
                   height: 60,
-                  width: resizabletotalCanvasWitdh - leftStartHandleOffsetX,
-                  transform:
-                      Matrix4.translationValues(leftStartHandleOffsetX, 0, 0),
+                  width: resizabletotalCanvasWitdh,
+                  transform: Matrix4.translationValues(0, 0, 0),
                   decoration: widget.isHighlighted
                       ? BoxDecoration(
                           border: Border.all(color: Colors.blue, width: 2),
@@ -196,7 +208,7 @@ class _TrimmerState extends State<Trimmer> {
                 Positioned(
                   height: 60,
                   width: widget.isHighlighted ? dragHandleWidth : 0,
-                  left: leftStartHandleOffsetX,
+                  left: 0,
                   child: GestureDetector(
                     onHorizontalDragEnd: (details) {
                       calculateTrimmedTime(
@@ -205,33 +217,48 @@ class _TrimmerState extends State<Trimmer> {
                           resizedWidth: resizabletotalCanvasWitdh,
                           totalWidth: widget.totalFrameWidth,
                           transformedValue: leftStartHandleOffsetX);
-                      widget.recompute(
-                          groupIndex: widget.groupIndex,
-                          movedLeftOffset: leftStartHandleOffsetX);
+                      widget.parentRepositioner(
+                          binderValue: 0,
+                          lastGroupIndex: widget.groupIndex,
+                          isSaveDidUpdateWidget: false);
+                      // leftStartHandleOffsetX = 0;
+                      canUpdateTotalFrameWidthForLeftDragHandle = true;
+                      log(widget.width.toString() +
+                          "total width --- binder :${widget.binderValue}");
+                      // widget.recompute(
+                      //     groupIndex: widget.groupIndex,
+                      //     movedLeftOffset: leftStartHandleOffsetX);
                       stateSet(
                         () {},
                       );
                     },
                     onHorizontalDragUpdate: (details) {
-                      leftStartHandleOffsetX += details.delta.dx;
-                      leftStartHandleOffsetX = leftStartHandleOffsetX.clamp(
-                          0, resizabletotalCanvasWitdh);
-                      widget.binderUpdater(
-                          leftStartHandleOffsetX, widget.groupIndex, 0, true);
-                      resizabletotalCanvasWitdh =
-                          resizabletotalCanvasWitdh - details.delta.dx;
+                      final double dx = details.delta.dx;
+
+                      final double newWidth = resizabletotalCanvasWitdh - dx;
                       final double minWidth =
-                          leftStartHandleOffsetX; // Set a reasonable minimum width
+                          0; // Set a reasonable minimum width
                       //! modify maxwidth to take only the available space
                       final double maxWidth = widget.totalFrameWidth -
-                          widget.initialSpace; // Allow some expansion
+                          leftInitialTranslation; // Allow some expansion
 
-                      resizabletotalCanvasWitdh = double.parse(
-                          resizabletotalCanvasWitdh
-                              .clamp(minWidth, maxWidth)
-                              .toStringAsFixed(2));
-                      log("left offset $leftStartHandleOffsetX $resizabletotalCanvasWitdh");
-                      stateSet(() {});
+                      resizabletotalCanvasWitdh =
+                          newWidth.clamp(minWidth, maxWidth);
+                      leftStartHandleOffsetX =
+                          totalFrameWidthForLeftDragHandle -
+                              resizabletotalCanvasWitdh;
+                      log("left handler - $leftStartHandleOffsetX");
+                      calculateTrimmedTime(
+                          updateCb: true,
+                          isFromLeftHandle: true,
+                          resizedWidth: resizabletotalCanvasWitdh,
+                          totalWidth: widget.totalFrameWidth,
+                          transformedValue: leftStartHandleOffsetX);
+                      widget.parentRepositioner(
+                          binderValue: leftStartHandleOffsetX,
+                          lastGroupIndex: widget.groupIndex,
+                          isSaveDidUpdateWidget: false);
+                      stateSet(() {}); // Update UI
                     },
                     child: HandleWidget(
                       height: dragHandleHeight,
@@ -243,7 +270,6 @@ class _TrimmerState extends State<Trimmer> {
               if (widget.isHighlighted)
                 Positioned(
                   right: 0,
-                  height: 60,
                   width: widget.isHighlighted ? dragHandleWidth : 0,
                   child: GestureDetector(
                     onHorizontalDragEnd: (details) {
@@ -258,14 +284,13 @@ class _TrimmerState extends State<Trimmer> {
                       final double dx = details.delta.dx;
                       final double newWidth = resizabletotalCanvasWitdh + dx;
                       final double minWidth =
-                          leftStartHandleOffsetX; // Set a reasonable minimum width
+                          0; // Set a reasonable minimum width
                       //! modify maxwidth to take only the available space
                       final double maxWidth = widget.totalFrameWidth -
                           leftInitialTranslation; // Allow some expansion
 
-                      resizabletotalCanvasWitdh = double.parse(newWidth
-                          .clamp(minWidth, maxWidth)
-                          .toStringAsFixed(2));
+                      resizabletotalCanvasWitdh =
+                          newWidth.clamp(minWidth, maxWidth);
                       stateSet(() {}); // Update UI
                     },
                     child: HandleWidget(
