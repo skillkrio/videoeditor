@@ -21,7 +21,7 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
   Rect? _rect;
   late VoidCallback triggerSplit;
   final videoUrl =
-      "https://gudsho-channelstatic.akamaized-staging.net/editor/video_001/Video_Campus_Time.mp4";
+      "https://videos.pexels.com/video-files/4762116/4762116-uhd_2560_1440_25fps.mp4";
   double? sourceVideoHeight;
   double? sourceVideoWidth;
   double? deviceVideoWidth;
@@ -44,11 +44,16 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
     _videoController = VideoPlayerController.networkUrl(
       Uri.parse(videoUrl),
     );
+    await _videoController.initialize();
 
     try {
-      await _videoController.initialize();
+      // await _videoController.initialize();
       sourceVideoHeight = _videoController.value.size.height;
       sourceVideoWidth = _videoController.value.size.width;
+
+      log('SourceVideoWidth $sourceVideoWidth');
+      log('SourceVideoWidth $sourceVideoHeight');
+
       // await _videoController.setLooping(true);
       setState(() {
         _isInitialized = true;
@@ -336,12 +341,16 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
                   videoUrl: videoUrl,
                   playedDurationInMilliSec:
                       _videoController.value.position.inMilliseconds,
+                  controller: _videoController,
                 ),
               ));
               if (result != null) {
                 Rect cropRect = result['rect'];
                 double deviceHeight = result['deviceHeight'];
                 double deviceWidth = result['deviceWidth'];
+                log('Print the Coming result $result');
+                log('Print the deviceHeight $deviceHeight');
+                log('Print the deviceWidth $deviceWidth');
 
                 // Convert cropRect from device resolution to actual video resolution
                 Rect convertedRect = Rect.fromLTWH(
@@ -350,6 +359,7 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
                   cropRect.width * (sourceVideoWidth! / deviceWidth),
                   cropRect.height * (sourceVideoHeight! / deviceHeight),
                 );
+                log('Print the converted Rect $convertedRect');
 
                 setState(() {
                   _rect = convertedRect;

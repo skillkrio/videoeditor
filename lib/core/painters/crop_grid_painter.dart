@@ -48,3 +48,33 @@ class CropGridPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
+
+class CropOverlayPainter extends CustomPainter {
+  final Rect cropRect;
+
+  CropOverlayPainter({required this.cropRect});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.black.withOpacity(0.6);
+
+    // Create full screen rectangle
+    final fullRect = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    // Create crop area rectangle
+    final cropPath = Path()..addRect(cropRect);
+
+    // Remove crop area from the dark overlay
+    final finalPath =
+        Path.combine(PathOperation.difference, fullRect, cropPath);
+
+    // Draw the overlay
+    canvas.drawPath(finalPath, paint);
+  }
+
+  @override
+  bool shouldRepaint(CropOverlayPainter oldDelegate) {
+    return oldDelegate.cropRect != cropRect;
+  }
+}

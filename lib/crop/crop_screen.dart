@@ -7,18 +7,20 @@ import '../core/painters/crop_grid_painter.dart';
 
 class CropScreen extends StatefulWidget {
   final String videoUrl;
+  final VideoPlayerController controller;
   final int playedDurationInMilliSec;
   const CropScreen(
       {super.key,
       required this.videoUrl,
-      required this.playedDurationInMilliSec});
+      required this.playedDurationInMilliSec,
+      required this.controller});
 
   @override
   State<CropScreen> createState() => _CropScreenState();
 }
 
 class _CropScreenState extends State<CropScreen> {
-  late VideoPlayerController controller;
+  // late VideoPlayerController controller;
   bool isLoading = true;
   final stateKey = GlobalKey();
   double? deviceVideoHeight = 0;
@@ -35,44 +37,13 @@ class _CropScreenState extends State<CropScreen> {
   void initState() {
     super.initState();
 
-    controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
-      ..initialize().then((_) {
-        setState(() {
-          isLoading = false;
-          controller
-              .seekTo(Duration(milliseconds: widget.playedDurationInMilliSec));
-        });
-        Future.delayed(
-          Duration(milliseconds: 100),
-          () {
-            setState(() {
-              deviceVideoHeight = stateKey.currentContext?.size?.height;
-              deviceVideoWidth = stateKey.currentContext?.size?.width;
-              log('print the device height and width : $deviceVideoHeight,$deviceVideoWidth');
-              log('Print the video original video height and width : ${controller.value.size.height},${controller.value.size.width}');
-              cropRect =
-                  Rect.fromLTWH(0, 0, deviceVideoWidth!, deviceVideoHeight!);
-            });
-            // log('print the aspectratio of height $heightVideo');
-            // log('print the aspectratio of width $widthVideo');
-
-            log('print the cropRect value $cropRect');
-
-            log('print the stateey of height ${stateKey.currentContext?.size?.height}');
-          },
-        );
-      }).catchError((error) {
-        debugPrint('Failed to initialize video: $error');
-        setState(() {
-          isLoading = false;
-        });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        deviceVideoHeight = stateKey.currentContext?.size?.height;
+        deviceVideoWidth = stateKey.currentContext?.size?.width;
+        cropRect = Rect.fromLTWH(0, 0, deviceVideoWidth!, deviceVideoHeight!);
       });
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
+    });
   }
 
   void _startDrag(Offset position) {
@@ -85,9 +56,8 @@ class _CropScreenState extends State<CropScreen> {
     });
   }
 
-//Prevent croprect within its boundary and prevent overflow outside boundary
   void _changeAspectRatio(double newRatio) {
-    if (!controller.value.isInitialized) return;
+    if (!widget.controller.value.isInitialized) return;
     setState(() {
       aspectRatio2 = newRatio;
 
@@ -135,46 +105,30 @@ class _CropScreenState extends State<CropScreen> {
   }
 
   void _updateDrag(Offset newPosition) {
-    // Prevent null errors
-    if (dragStartPoint == null ||
-        initialRect == null ||
-        deviceVideoWidth == null ||
-        deviceVideoHeight == null) {
-      return;
-    }
-
     // Calculate the delta of the drag movement
     double dx = newPosition.dx - dragStartPoint!.dx;
     double dy = newPosition.dy - dragStartPoint!.dy;
 
-    // Calculate new crop rectangle position
+    // Update the position of the crop rectangle
     double newLeft = initialRect!.left + dx;
     double newTop = initialRect!.top + dy;
     double newRight = initialRect!.right + dx;
     double newBottom = initialRect!.bottom + dy;
 
-    // Define boundaries
+    // Clamp the position of the crop rectangle within the video boundaries
     double minLeft = 0.0;
     double minTop = 0.0;
-    double maxRight = deviceVideoWidth! - cropRect.width;
-    double maxBottom = deviceVideoHeight! - cropRect.height;
+    double maxRight = deviceVideoWidth! -
+        cropRect.width; // Assuming videoWidth is the video width
+    double maxBottom = deviceVideoHeight! -
+        cropRect.height; // Assuming videoHeight is the video height
 
-    // Clamp the crop area within boundaries (without resizing)
     newLeft = newLeft.clamp(minLeft, maxRight);
     newTop = newTop.clamp(minTop, maxBottom);
-    newRight = newLeft + cropRect.width; // Maintain width
-    newBottom = newTop + cropRect.height; // Maintain height
-
-    // Prevent snapping or unintended resizing
-    if (newBottom > maxBottom) {
-      newBottom = maxBottom;
-      newTop = newBottom - cropRect.height;
-    }
-
-    if (newRight > maxRight) {
-      newRight = maxRight;
-      newLeft = newRight - cropRect.width;
-    }
+    newRight =
+        newRight.clamp(minLeft + cropRect.width, maxRight + cropRect.width);
+    newBottom =
+        newBottom.clamp(minTop + cropRect.height, maxBottom + cropRect.height);
 
     // Update the crop rectangle position
     setState(() {
@@ -307,6 +261,7 @@ class _CropScreenState extends State<CropScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.grey[400],
         title: Text('Crop Video'),
         centerTitle: true,
         leading: InkWell(
@@ -323,116 +278,178 @@ class _CropScreenState extends State<CropScreen> {
             Container(
               alignment: Alignment.center,
               height: 500,
-              child: isLoading
-                  ? CircularProgressIndicator(
-                      color: Colors.white,
-                    )
-                  : Stack(
-                      children: [
-                        AspectRatio(
-                            key: stateKey,
-                            aspectRatio: controller.value.aspectRatio,
-                            child: VideoPlayer(controller)),
-                        Positioned.fill(
-                          child: GestureDetector(
-                            onPanStart: (details) {
-                              if (isResizing) return;
-                              _startDrag(details.localPosition);
-                            },
-                            onPanUpdate: (details) {
-                              log("middle container");
-                              if (isResizing) {
-                                _updateResize(details.localPosition);
-                              } else if (isDragging) {
-                                _updateDrag(details.localPosition);
-                              }
-                            },
-                            onPanEnd: (details) {
-                              if (isResizing) {
-                                _endResize();
-                              } else if (isDragging) {
-                                _endDrag();
-                              }
-                            },
-                            child: Stack(
-                              children: [
-                                // Grid Overlay
-                                CustomPaint(
-                                  painter: CropGridPainter(cropRect),
+              child: Stack(
+                children: [
+                  AspectRatio(
+                      key: stateKey,
+                      aspectRatio: widget.controller.value.aspectRatio,
+                      child: VideoPlayer(widget.controller)),
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: CropOverlayPainter(
+                        cropRect: cropRect,
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: GestureDetector(
+                      //Prevent croprect within its boundary and prevent overflow outside boundary
+
+                      onPanStart: (details) {
+                        if (isResizing) return;
+                        _startDrag(details.localPosition);
+                      },
+                      onPanUpdate: (details) {
+                        log("middle container");
+                        if (isResizing) {
+                          _updateResize(details.localPosition);
+                        } else if (isDragging) {
+                          _updateDrag(details.localPosition);
+                        }
+                      },
+                      onPanEnd: (details) {
+                        if (isResizing) {
+                          _endResize();
+                        } else if (isDragging) {
+                          _endDrag();
+                        }
+                      },
+                      child: Stack(
+                        children: [
+                          // Grid Overlay
+
+                          CustomPaint(
+                            painter: CropGridPainter(cropRect),
+                          ),
+
+                          // Draggable Crop Box
+                          Positioned.fromRect(
+                            rect: cropRect,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Colors.white,
                                 ),
-                                // Draggable Crop Box
-                                Positioned.fromRect(
-                                  rect: cropRect,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
+                              ),
+                              child: Stack(
+                                // alignment: Alignment.center,
+                                children: [
+                                  Positioned(
+                                    top: 0,
+                                    left: 0,
+                                    child: _buildHandle('topLeft', cropRect),
+                                  ),
+                                  Positioned(
+                                    left: (cropRect.width -
+                                            (cropRect.width / 3)) /
+                                        2,
+                                    child: _buildHandle('topCenter', cropRect),
+                                  ),
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: _buildHandle('topRight', cropRect),
+                                  ),
+                                  // Right edge dots
+                                  Positioned(
+                                    right: 0,
+                                    top: (cropRect.height -
+                                            (cropRect.height / 3)) /
+                                        2,
+                                    child:
+                                        _buildHandle('rightCenter', cropRect),
+                                  ),
+                                  // Left edge dots
+                                  Positioned(
+                                    left: 0,
+                                    top: (cropRect.height -
+                                            (cropRect.height / 3)) /
+                                        2,
+                                    child: _buildHandle('leftCenter', cropRect),
+                                  ),
+                                  // Bottom edge dots
+                                  Positioned(
+                                    left: 0,
+                                    bottom: 0,
+                                    child: _buildHandle('bottomLeft', cropRect),
+                                  ),
+                                  Positioned(
+                                    bottom: 0,
+                                    // top: deviceVideoHeight! -
+                                    //     (deviceVideoHeight! / 3),
+                                    left: (cropRect.width -
+                                            (cropRect.width / 3)) /
+                                        2,
+                                    child:
+                                        _buildHandle('bottomCenter', cropRect),
+                                  ),
+                                  Positioned(
+                                    right: 0,
+                                    bottom: 0,
+                                    child:
+                                        _buildHandle('bottomRight', cropRect),
+                                  ),
+                                  Positioned(
+                                    top: -8, // Adjust positioning as needed
+                                    left: -8, // Adjust positioning as needed
+                                    child: Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.white, // Circle color
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: -8, // Adjust positioning as needed
+                                    right: -8, // Adjust positioning as needed
+                                    child: Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.white, // Circle color
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: -8, // Adjust positioning as needed
+                                    left: -8, // Adjust positioning as needed
+                                    child: Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.white, // Circle color
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: -8, // Adjust positioning as needed
+                                    right: -8, // Adjust positioning as needed
+                                    child: Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
                                         color: Colors.white,
                                       ),
                                     ),
-                                    child: Stack(
-                                      // alignment: Alignment.center,
-                                      children: [
-                                        Positioned(
-                                          left: 0,
-                                          child:
-                                              _buildHandle('topLeft', cropRect),
-                                        ),
-                                        Positioned(
-                                          left: deviceVideoWidth! / 3,
-                                          child: _buildHandle(
-                                              'topCenter', cropRect),
-                                        ),
-                                        Positioned(
-                                          right: 0,
-                                          top: 0,
-                                          child: _buildHandle(
-                                              'topRight', cropRect),
-                                        ),
-// Right edge dots
-                                        Positioned(
-                                          right: 0,
-                                          top: deviceVideoHeight! / 3,
-                                          child: _buildHandle(
-                                              'rightCenter', cropRect),
-                                        ),
-// Left edge dots
-                                        Positioned(
-                                          left: 0,
-                                          top: deviceVideoHeight! / 3,
-                                          child: _buildHandle(
-                                              'leftCenter', cropRect),
-                                        ),
-// Bottom edge dots
-                                        Positioned(
-                                          left: 0,
-                                          bottom: 0,
-                                          child: _buildHandle(
-                                              'bottomLeft', cropRect),
-                                        ),
-                                        Positioned(
-                                          bottom: 0,
-                                          top: deviceVideoHeight! -
-                                              (deviceVideoHeight! / 3),
-                                          left: deviceVideoWidth! / 3,
-                                          child: _buildHandle(
-                                              'bottomCenter', cropRect),
-                                        ),
-                                        Positioned(
-                                          right: 0,
-                                          bottom: 0,
-                                          child: _buildHandle(
-                                              'bottomRight', cropRect),
-                                        ),
-                                      ],
-                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 20,
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -477,7 +494,6 @@ class _CropScreenState extends State<CropScreen> {
     log('buildhandle calling here ');
     return GestureDetector(
       onPanStart: (details) {
-        // log('print the buildHandle details $details');
         _startResize(details.localPosition, handle);
       },
       onPanUpdate: (details) {
