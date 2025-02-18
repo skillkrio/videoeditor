@@ -21,7 +21,7 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
   Rect? _rect;
   late VoidCallback triggerSplit;
   final videoUrl =
-      "https://videos.pexels.com/video-files/4762116/4762116-uhd_2560_1440_25fps.mp4";
+      "https://gudsho-channelstatic.akamaized-staging.net/editor/video_001/Video_Campus_Time.mp4";
   double? sourceVideoHeight;
   double? sourceVideoWidth;
   double? deviceVideoWidth;
