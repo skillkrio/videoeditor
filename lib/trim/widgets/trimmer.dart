@@ -57,7 +57,7 @@ class Trimmer extends StatefulWidget {
 class _TrimmerState extends State<Trimmer> {
   late final ScrollController _scrollController;
   double leftStartHandleOffsetX = 0;
-  double leftInitialTranslation = 0;
+  // double leftInitialTranslation = 0;
   double resizabletotalCanvasWitdh = 0;
   double totalFrameWidthForLeftDragHandle = 0;
   double binderValue = 0;
@@ -68,7 +68,7 @@ class _TrimmerState extends State<Trimmer> {
     resizabletotalCanvasWitdh = widget.newTotalWidth;
     totalFrameWidthForLeftDragHandle = widget.newTotalWidth;
     _scrollController = ScrollController();
-    leftInitialTranslation = widget.initialSpace;
+    leftStartHandleOffsetX = widget.initialSpace;
   }
 
   @override
@@ -181,9 +181,7 @@ class _TrimmerState extends State<Trimmer> {
                     alignment: Alignment.centerLeft,
                     child: Container(
                       transform: Matrix4.translationValues(
-                          -leftInitialTranslation - leftStartHandleOffsetX,
-                          0,
-                          0),
+                          -leftStartHandleOffsetX, 0, 0),
                       height: 60,
                       child: ListView.builder(
                         controller: _scrollController,
