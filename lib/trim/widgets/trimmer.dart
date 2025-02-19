@@ -231,8 +231,8 @@ class _TrimmerState extends State<Trimmer> {
                       // leftStartHandleOffsetX = 0;
                       canUpdateTotalFrameWidthForLeftDragHandle = true;
 
-                      log(widget.width.toString() +
-                          "total width --- binder :${binderValue}");
+                      // log(widget.width.toString() +
+                      //     "total width --- binder :${binderValue}");
                       // widget.recompute(
                       //     groupIndex: widget.groupIndex,
                       //     movedLeftOffset: leftStartHandleOffsetX);
@@ -245,9 +245,11 @@ class _TrimmerState extends State<Trimmer> {
 
 // Update the leftStartHandleOffsetX correctly
                       final double previousWidth = resizabletotalCanvasWitdh;
+                      final double maxWidth =
+                          (resizabletotalCanvasWitdh) + leftStartHandleOffsetX;
+
                       resizabletotalCanvasWitdh =
-                          (resizabletotalCanvasWitdh - dx)
-                              .clamp(0, widget.totalFrameWidth);
+                          (resizabletotalCanvasWitdh - dx).clamp(0, maxWidth);
                       //Preventing the binder scroll when reached 0
                       if (leftStartHandleOffsetX > 0) {
                         binderValue += dx;
@@ -291,6 +293,9 @@ class _TrimmerState extends State<Trimmer> {
                           updateCb: true,
                           isFromLeftHandle: false,
                           transformedValue: leftStartHandleOffsetX);
+                    },
+                    onHorizontalDragStart: (details) {
+                      leftStartHandleOffsetX = widget.initialSpace;
                     },
                     onHorizontalDragUpdate: (details) {
                       final double dx = details.delta.dx;
