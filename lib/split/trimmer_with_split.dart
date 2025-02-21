@@ -37,7 +37,7 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
   final int frameWidth = 100;
   final int frameHeight = 60;
   //! maximum of 84 second is allowed for this thumbnail
-  final double totalDuration = 2;
+  final double totalDuration = 1;
   double frameDuration = 0.0;
   late int totalFrames;
   int framesPerSeconds = 2;
@@ -58,16 +58,16 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
   bool canUseLeftBinderInfo = false;
   Map<int, double> groupBinderInfo = {};
   void recompute({required int groupIndex, required double movedLeftOffset}) {
-    // if (_scrollController.hasClients) {
-    //   _scrollController.animateTo(0,
-    //       duration: Duration(milliseconds: 500), curve: Curves.easeIn);
-    // }
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(0,
+          duration: Duration(milliseconds: 500), curve: Curves.easeIn);
+    }
   }
 
   Future<void> _loadSpriteSheet() async {
     try {
       final spriteSheet = await _loadNetworkImage(
-          'https://gudsho-channelstatic.akamaized-staging.net/editor/media_1730714997978/frame_image.jpg');
+          'https://gudsho-channelstatic.akamaized-staging.net/editor/media_1737453115474/frame_image.jpg');
       setState(() {
         spriteSheetImage = spriteSheet;
         initialFrames = generateFrameRects(
@@ -85,7 +85,6 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
           'totalTimeDuration': totalDuration,
           'totalFrames': initialFrames.length,
           'initialSpace': 0.0,
-          'transformedValue': 0.0,
         });
         totalFrameWidth = calculateWidthFromTime(totalDuration);
         widget.timeInfoUpdater(timeInfoList);
@@ -229,7 +228,6 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
           'totalTimeDuration': totalDuration,
           'totalFrames': firstPart.length,
           'initialSpace': calculateWidthFromTime(firstPartStart),
-          'transformedValue': firstPartStart
         });
 
         newTimeInfoList.add({
@@ -241,7 +239,6 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
           'totalTimeDuration': totalDuration,
           'totalFrames': secondPart.length,
           'initialSpace': calculateWidthFromTime(secondPartStart),
-          'transformedValue': secondPartStart
         });
 
         highlightedIndex = i + 1;
@@ -379,71 +376,74 @@ class _TrimmerAndSplitState extends State<TrimmerAndSplit> {
         SizedBox(
           height: 100,
           child: Stack(
-            clipBehavior: Clip.none,
+            clipBehavior: Clip.hardEdge,
             children: [
               // Scrollable Frame List
-              Transform.translate(
-                offset: Offset(groupBinderValue, 0),
-                child: ListView.builder(
-                  controller: _scrollController,
-                  itemCount: timeInfoList.length,
-                  scrollDirection: Axis.horizontal,
-                  itemBuilder: (context, groupIndex) {
-                    double rightPadding =
-                        MediaQuery.of(context).size.width / 2 -
-                            (totalFrameWidth % 100);
+              Positioned.fill(
+                left: groupBinderValue,
+                child: Container(
+                  color: Colors.red,
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    itemCount: timeInfoList.length,
+                    scrollDirection: Axis.horizontal,
+                    itemBuilder: (context, groupIndex) {
+                      double rightPadding =
+                          MediaQuery.of(context).size.width / 2 -
+                              (totalFrameWidth % 100);
 
-                    rightPadding = rightPadding < 0 ? 0 : rightPadding;
-                    return GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onTap: () => setState(
-                        () {
-                          canUseLeftBinderInfo = true;
-                          if (highlightedIndex == groupIndex) {
-                            highlightedIndex = -1;
-                            return;
-                          }
-                          highlightedIndex = groupIndex; // Highlight the group
-                        },
-                      ),
-                      child: Row(
-                        children: [
-                          if (groupIndex == 0)
-                            SizedBox(
-                                width: MediaQuery.sizeOf(context).width / 2),
-                          //Trim Feature Widget
-                          Trimmer(
-                            newTotalWidth: timeInfoList[groupIndex]
-                                ['newTotalWidth'],
-                            recompute: recompute,
-                            totalFrameWidth: totalFrameWidth,
-                            timeFrameUpdater: timeFrameUpdate,
-                            groupIndex: groupIndex,
-                            transformedValue: timeInfoList[groupIndex]
-                                    ['transformedValue'] ??
-                                0,
-                            spriteSheetImage: spriteSheetImage!,
-                            frameRects: initialFrames,
-                            timeInfoList: timeInfoList,
-                            isHighlighted: highlightedIndex == groupIndex,
-                            totalFrames: timeInfoList[groupIndex]
-                                ['totalFrames'],
-                            startTime: timeInfoList[groupIndex]['startTime'],
-                            endTime: timeInfoList[groupIndex]['endTime'],
-                            width: timeInfoList[groupIndex]['totalWidth'],
-                            totalTimeDuration: timeInfoList[groupIndex]
-                                ['totalTimeDuration'],
-                            initialSpace: timeInfoList[groupIndex]
-                                ['initialSpace'],
-                            binderValue: groupBinderValue,
-                            parentRepositioner: parentRepositioner,
-                          ),
-                          if (groupIndex == frameGroups.length - 1)
-                            SizedBox(width: rightPadding),
-                        ],
-                      ),
-                    );
-                  },
+                      rightPadding = rightPadding < 0 ? 0 : rightPadding;
+                      return GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () => setState(
+                          () {
+                            canUseLeftBinderInfo = true;
+                            if (highlightedIndex == groupIndex) {
+                              return;
+                            }
+                            highlightedIndex =
+                                groupIndex; // Highlight the group
+                          },
+                        ),
+                        child: Row(
+                          children: [
+                            if (groupIndex == 0)
+                              SizedBox(
+                                  width: MediaQuery.sizeOf(context).width / 2),
+                            //Trim Feature Widget
+                            Trimmer(
+                              newTotalWidth: timeInfoList[groupIndex]
+                                  ['newTotalWidth'],
+                              recompute: recompute,
+                              totalFrameWidth: totalFrameWidth,
+                              timeFrameUpdater: timeFrameUpdate,
+                              groupIndex: groupIndex,
+                              transformedValue: timeInfoList[groupIndex]
+                                      ['transformedValue'] ??
+                                  0,
+                              spriteSheetImage: spriteSheetImage!,
+                              frameRects: initialFrames,
+                              timeInfoList: timeInfoList,
+                              isHighlighted: highlightedIndex == groupIndex,
+                              totalFrames: timeInfoList[groupIndex]
+                                  ['totalFrames'],
+                              startTime: timeInfoList[groupIndex]['startTime'],
+                              endTime: timeInfoList[groupIndex]['endTime'],
+                              width: timeInfoList[groupIndex]['totalWidth'],
+                              totalTimeDuration: timeInfoList[groupIndex]
+                                  ['totalTimeDuration'],
+                              initialSpace: timeInfoList[groupIndex]
+                                  ['initialSpace'],
+                              binderValue: groupBinderValue,
+                              parentRepositioner: parentRepositioner,
+                            ),
+                            if (groupIndex == frameGroups.length - 1)
+                              SizedBox(width: rightPadding),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
 

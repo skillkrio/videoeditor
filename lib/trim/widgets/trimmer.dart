@@ -57,7 +57,6 @@ class Trimmer extends StatefulWidget {
 class _TrimmerState extends State<Trimmer> {
   late final ScrollController _scrollController;
   double leftStartHandleOffsetX = 0;
-  // double leftInitialTranslation = 0;
   double resizabletotalCanvasWitdh = 0;
   double totalFrameWidthForLeftDragHandle = 0;
   double binderValue = 0;
@@ -126,8 +125,6 @@ class _TrimmerState extends State<Trimmer> {
 
     // Update the modified map
     final modifiedMap = widget.timeInfoList[widget.groupIndex];
-    modifiedMap['transformedValue'] =
-        transformedValue.abs(); // Use positive value
     modifiedMap['startTime'] = startTime;
     modifiedMap['endTime'] = endTime;
     modifiedMap['newTotalWidth'] = newWidth;
@@ -142,7 +139,6 @@ class _TrimmerState extends State<Trimmer> {
 
   @override
   Widget build(BuildContext context) {
-    //  leftInitialTranslation = widget.initialSpace;
     return LayoutBuilder(builder: (context, constraints) {
       double dragHandleWidth = 15;
       double dragHandleHeight = 60;
@@ -211,7 +207,6 @@ class _TrimmerState extends State<Trimmer> {
                   left: 0,
                   child: GestureDetector(
                     onHorizontalDragStart: (details) {
-                      // leftInitialTranslation = widget.initialSpace;
                       leftStartHandleOffsetX = widget.initialSpace;
                     },
                     onHorizontalDragEnd: (details) {
