@@ -21,7 +21,7 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
   Rect? _rect;
   late VoidCallback triggerSplit;
   final videoUrl =
-      "https://gudsho-channelstatic.akamaized-staging.net/editor/video_001/Video_Campus_Time.mp4";
+      "https://videos.pexels.com/video-files/8302166/8302166-uhd_2732_1440_25fps.mp4";
   double? sourceVideoHeight;
   double? sourceVideoWidth;
   double? deviceVideoWidth;
@@ -32,6 +32,9 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
   double aspectRatio = 16 / 9;
   double lastPlayedInMilliSeconds = 0;
   Timer? _playTimer;
+  Rect? lastcroprect;
+  double? lastDeviceHeight;
+  double? lastDeviceWidth;
 
   @override
   void initState() {
@@ -223,7 +226,7 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
                                   alignment: Alignment.center,
                                   children: [
                                     FittedBox(
-                                      fit: BoxFit.cover,
+                                      fit: BoxFit.fill,
                                       child: ClipRect(
                                         child: Align(
                                           alignment:
@@ -342,13 +345,14 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
                   playedDurationInMilliSec:
                       _videoController.value.position.inMilliseconds,
                   controller: _videoController,
+                  lastCropRect: lastcroprect,
                 ),
               ));
               if (result != null) {
                 Rect cropRect = result['rect'];
                 double deviceHeight = result['deviceHeight'];
                 double deviceWidth = result['deviceWidth'];
-                log('Print the Coming result $result');
+                log('Print the Coming result $cropRect');
                 log('Print the deviceHeight $deviceHeight');
                 log('Print the deviceWidth $deviceWidth');
 
@@ -365,6 +369,13 @@ class _ContusPlayerScreenState extends State<ContusPlayerScreen> {
                   _rect = convertedRect;
                   deviceVideoHeight = sourceVideoHeight;
                   deviceVideoWidth = sourceVideoWidth;
+
+                  //This is for last cropped
+                  lastcroprect = cropRect;
+
+                  log('show me the lastcrop $lastcroprect');
+                  log('show me the lastDeviceheight $lastDeviceHeight');
+                  log('show me the lastDeviceWidth $lastDeviceWidth');
                 });
               }
             },

@@ -1,3 +1,4 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
@@ -9,11 +10,14 @@ class CropScreen extends StatefulWidget {
   final String videoUrl;
   final VideoPlayerController controller;
   final int playedDurationInMilliSec;
-  const CropScreen(
-      {super.key,
-      required this.videoUrl,
-      required this.playedDurationInMilliSec,
-      required this.controller});
+  final Rect? lastCropRect;
+  const CropScreen({
+    super.key,
+    required this.videoUrl,
+    required this.controller,
+    required this.playedDurationInMilliSec,
+    required this.lastCropRect,
+  });
 
   @override
   State<CropScreen> createState() => _CropScreenState();
@@ -41,7 +45,12 @@ class _CropScreenState extends State<CropScreen> {
       setState(() {
         deviceVideoHeight = stateKey.currentContext?.size?.height;
         deviceVideoWidth = stateKey.currentContext?.size?.width;
-        cropRect = Rect.fromLTWH(0, 0, deviceVideoWidth!, deviceVideoHeight!);
+        cropRect = widget.lastCropRect != null
+            ? widget.lastCropRect!
+            : Rect.fromLTWH(0, 0, deviceVideoWidth!, deviceVideoHeight!);
+        log('Print the devicevideoHeight $deviceVideoHeight');
+        log('Print the devicevideoWidth $deviceVideoWidth');
+        log('Print the initializzeee cropRect  $cropRect');
       });
     });
   }
@@ -474,8 +483,7 @@ class _CropScreenState extends State<CropScreen> {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                debugPrint('Crop box saved in aspectRatio: $aspectRatio2');
-                debugPrint("Crop box saved in cropRect: $cropRect");
+                log("Crop box saved in cropRect: $cropRect");
                 Navigator.pop(context, {
                   "rect": cropRect,
                   "deviceHeight": deviceVideoHeight,
